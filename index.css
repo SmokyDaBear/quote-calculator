@@ -66,7 +66,9 @@ html {
   overflow-x: hidden;
 }
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -178,7 +180,7 @@ h1 {
 }
 
 .toggle-switch::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 2px;
   left: 2px;
@@ -207,14 +209,16 @@ h1 {
   z-index: 1000;
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
 }
 
 .modal-overlay.show {
   opacity: 1;
   background-color: var(--opacity);
-  backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
   visibility: visible;
 }
 
@@ -315,7 +319,7 @@ main {
   flex: 1;
   overflow-y: auto;
   display: flex;
-  padding-right:4px;
+  padding-right: 4px;
   flex-direction: column;
   gap: 0.5em;
 }
@@ -763,7 +767,7 @@ button:hover {
   .calculator-layout {
     grid-template-columns: 1fr;
   }
-  
+
   .history-sidebar {
     max-height: 250px;
     order: 2;
@@ -797,14 +801,14 @@ button:hover {
   .action-buttons {
     grid-template-columns: 1fr;
   }
-  
+
   .quote-info-section {
     flex-direction: column;
     align-items: stretch;
     padding: 0.75em;
     gap: 0.75em;
   }
-  
+
   .quote-number {
     flex-direction: row;
     justify-content: center;
@@ -826,7 +830,7 @@ button:hover {
     width: 100%;
     max-width: calc(100% - 40px);
   }
-  
+
   .job-summary {
     flex-direction: column;
     align-items: flex-start;
@@ -871,7 +875,9 @@ button:hover {
   }
 
   /* Prevent iOS zoom on input focus */
-  input, select, textarea {
+  input,
+  select,
+  textarea {
     font-size: 16px;
   }
 }
