@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+  <link rel="stylesheet" href="./index.css" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quote Calculator</title>
+  </head>
+  <script src="./history.js"></script>
+  <body>
+    <header>
+      Quote Calculator
+      <div class="settings-container">
+        <button class="settings-btn" id="settings-btn" title="Settings">Settings</button>
+        <div class="settings-dropdown" id="settings-dropdown">
+          <div class="settings-item" id="theme-toggle">
+            <span>Dark Mode</span>
+            <div class="toggle-switch" id="theme-switch"></div>
+          </div>
+          <div class="settings-divider"></div>
+          <button class="settings-item danger" id="clear-history-btn">
+            Clear All History
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirm-modal">
+      <div class="modal">
+        <h3>Clear History?</h3>
+        <p>This will permanently delete all saved quotes. This action cannot be undone.</p>
+        <div class="modal-actions">
+          <button class="btn-secondary" id="modal-cancel">Cancel</button>
+          <button class="btn-danger" id="modal-confirm">Clear All</button>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <div class="calculator-layout">
+        <!-- History Sidebar -->
+        <aside class="history-sidebar">
+          <div class="history-header">
+            <h3>Quote History</h3>
+            <input type="text" id="history-search" placeholder="Search quotes..." />
+          </div>
+          <div id="history-list" class="history-list">
+            <div class="loading">Loading history...</div>
+          </div>
+        </aside>
+
+        <div class="calculator-container">
+          <!-- Quote Info Section -->
+          <div class="quote-info-section">
+            <div class="quote-number">
+              <span>Quote #</span>
+              <span id="quote-number">---</span>
+            </div>
+            <div class="form-group customer-name-group">
+              <label for="customer-name">Customer Name</label>
+              <input type="text" id="customer-name" placeholder="Enter customer name" />
+            </div>
+            <button type="button" id="new-quote-btn" class="btn-small btn-secondary">New Quote</button>
+          </div>
+
+          <!-- Global Rates Section -->
+          <div class="rates-section">
+            <h3>Global Rates</h3>
+            <div class="rates-grid">
+              <div class="form-group">
+                <label for="tax-rate">Tax Rate (%)</label>
+                <input type="number" step="0.01" value="8.52" id="tax-rate" name="tax-rate" />
+              </div>
+              <div class="form-group">
+                <label for="labor-rate">Labor Rate ($/hr)</label>
+                <input type="number" step="0.01" value="215" id="labor-rate" name="labor-rate" />
+              </div>
+              <div class="form-group">
+                <label for="ss-rate">SS Rate (%)</label>
+                <input type="number" step="0.01" value="15" id="ss-rate" name="ss-rate" />
+              </div>
+              <div class="form-group">
+                <label for="ss-max">SS Max ($)</label>
+                <input type="number" step="0.01" value="54.95" id="ss-max" name="ss-max" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Jobs Section -->
+          <div class="jobs-section">
+            <div class="jobs-header">
+              <h3>Jobs</h3>
+              <button type="button" id="add-job-btn" class="btn-small">+ Add Job</button>
+            </div>
+            <div id="jobs-container">
+              <!-- Jobs will be added here dynamically -->
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-buttons">
+            <button type="button" id="submit-btn" class="btn">Calculate Total</button>
+            <button type="button" id="save-quote-btn" class="btn btn-success">Save Quote</button>
+          </div>
+
+          <!-- Results Section -->
+          <div class="results-section">
+            <h3>Quote Summary</h3>
+            <div id="job-summaries">
+              <!-- Individual job summaries will appear here -->
+            </div>
+            <div class="totals-grid">
+              <div class="total-row">
+                <span>Total Labor:</span>
+                <span id="labor-total">$0.00</span>
+              </div>
+              <div class="total-row">
+                <span>Total Parts:</span>
+                <span id="parts-total">$0.00</span>
+              </div>
+              <div class="total-row">
+                <span>Total Shop Supplies:</span>
+                <span id="ss-total">$0.00</span>
+              </div>
+              <div class="total-row">
+                <span>Total Tax:</span>
+                <span id="tax-total">$0.00</span>
+              </div>
+              <div class="total-row grand-total">
+                <span>Grand Total:</span>
+                <span id="order-total">$0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script>
+      let jobCounter = 0;
+      let currentQuoteId = null;
+
+      // Create a new job card
+      const createJobCard = (jobId, data = {}) => {
+        const jobDiv = document.createElement('div');
+        jobDiv.className = 'job-card';
+        jobDiv.dataset.jobId = jobId;
+        jobDiv.innerHTML = `
+          <div class="job-header">
+            <input type="text" class="job-name" placeholder="Job ${jobId}" value="${data.name || `Job ${jobId}`}" />
+            <button type="button" class="btn-remove" onclick="removeJob(${jobId})">×</button>
+          </div>
+          <div class="job-inputs">
+            <div class="form-group">
+              <label>Parts ($)</label>
+              <input type="number" step="0.01" class="job-parts" placeholder="0.00" value="${data.parts || ''}" />
+            </div>
+            <div class="form-group">
+              <label>Labor Hrs</label>
+              <input type="number" step="0.1" class="job-labor-hrs" placeholder="0" value="${data.laborHrs || ''}" />
+            </div>
+          </div>
+          <div class="form-group job-description-group">
+            <label>Description</label>
+            <textarea class="job-description" placeholder="Job description...">${data.description || ''}</textarea>
+          </div>
+          <div class="job-subtotal">
+            <span>Subtotal: </span><span class="job-subtotal-value">$0.00</span>
+          </div>
+        `;
+        return jobDiv;
+      };
+
+      // Add a new job
+      const addJob = (data = {}) => {
+        jobCounter++;
+        const jobCard = createJobCard(jobCounter, data);
+        document.getElementById('jobs-container').appendChild(jobCard);
+        return jobCounter;
+      };
+
+      // Remove a job
+      const removeJob = (jobId) => {
+        const jobCard = document.querySelector(`[data-job-id="${jobId}"]`);
+        if (jobCard) {
+          jobCard.remove();
+        }
+      };
+
+      // Calculate totals for a single job
+      const calculateJobTotal = (parts, laborHrs, laborRate, ssRate, ssMax) => {
+        const laborTotal = laborRate * laborHrs;
+        const ssPercentage = ssRate * 0.01;
+        let ssTotal = ssPercentage * laborTotal;
+        if (ssTotal > ssMax) ssTotal = ssMax;
+        return { laborTotal, ssTotal, partsTotal: parts };
+      };
+
+      // Get all job data from the form
+      const getJobsData = () => {
+        const jobCards = document.querySelectorAll('.job-card');
+        const jobsData = [];
+        
+        jobCards.forEach((card) => {
+          jobsData.push({
+            name: card.querySelector('.job-name').value,
+            parts: Number(card.querySelector('.job-parts').value) || 0,
+            laborHrs: Number(card.querySelector('.job-labor-hrs').value) || 0,
+            description: card.querySelector('.job-description').value
+          });
+        });
+        
+        return jobsData;
+      };
+
+      // Main calculation
+      const handleSubmit = () => {
+        const taxRate = Number(document.getElementById('tax-rate').value) || 8.52;
+        const laborRate = Number(document.getElementById('labor-rate').value) || 215;
+        const ssRate = Number(document.getElementById('ss-rate').value) || 15;
+        const ssMax = Number(document.getElementById('ss-max').value) || 54.95;
+
+        let grandLaborTotal = 0;
+        let grandPartsTotal = 0;
+        let grandSsTotal = 0;
+
+        const jobCards = document.querySelectorAll('.job-card');
+        const summariesHtml = [];
+
+        jobCards.forEach((card, index) => {
+          const jobName = card.querySelector('.job-name').value || `Job ${index + 1}`;
+          const parts = Number(card.querySelector('.job-parts').value) || 0;
+          const laborHrs = Number(card.querySelector('.job-labor-hrs').value) || 0;
+
+          const { laborTotal, ssTotal, partsTotal } = calculateJobTotal(
+            parts, laborHrs, laborRate, ssRate, ssMax
+          );
+
+          grandLaborTotal += laborTotal;
+          grandPartsTotal += partsTotal;
+          grandSsTotal += ssTotal;
+
+          const jobSubtotal = laborTotal + partsTotal + ssTotal;
+          card.querySelector('.job-subtotal-value').textContent = `$${jobSubtotal.toFixed(2)}`;
+
+          summariesHtml.push(`
+            <div class="job-summary">
+              <strong>${jobName}</strong>
+              <span>Labor: $${laborTotal.toFixed(2)} | Parts: $${partsTotal.toFixed(2)} | SS: $${ssTotal.toFixed(2)}</span>
+            </div>
+          `);
+        });
+
+        // Calculate tax on parts and shop supplies only (not labor)
+        const taxableAmount = grandPartsTotal + grandSsTotal;
+        const taxTotal = taxableAmount * (taxRate * 0.01);
+
+        const grandTotal = grandLaborTotal + grandPartsTotal + grandSsTotal + taxTotal;
+
+        // Update summary
+        document.getElementById('job-summaries').innerHTML = summariesHtml.join('');
+        document.getElementById('labor-total').textContent = `$${grandLaborTotal.toFixed(2)}`;
+        document.getElementById('parts-total').textContent = `$${grandPartsTotal.toFixed(2)}`;
+        document.getElementById('ss-total').textContent = `$${grandSsTotal.toFixed(2)}`;
+        document.getElementById('tax-total').textContent = `$${taxTotal.toFixed(2)}`;
+        document.getElementById('order-total').textContent = `$${grandTotal.toFixed(2)}`;
+
+        return grandTotal;
+      };
+
+      // Save quote to history
+      const handleSaveQuote = () => {
+        const grandTotal = handleSubmit(); // Calculate first
+        
+        const customerName = document.getElementById('customer-name').value.trim();
+        if (!customerName) {
+          alert('Please enter a customer name before saving.');
+          document.getElementById('customer-name').focus();
+          return;
+        }
+
+        const quoteData = {
+          customerName,
+          rates: {
+            taxRate: Number(document.getElementById('tax-rate').value) || 8.52,
+            laborRate: Number(document.getElementById('labor-rate').value) || 215,
+            ssRate: Number(document.getElementById('ss-rate').value) || 15,
+            ssMax: Number(document.getElementById('ss-max').value) || 54.95
+          },
+          jobs: getJobsData(),
+          grandTotal
+        };
+
+        const quoteNumber = saveQuote(quoteData);
+        currentQuoteId = quoteNumber;
+        document.getElementById('quote-number').textContent = quoteNumber;
+        
+        // Refresh history list
+        loadHistory();
+        
+        alert(`Quote #${quoteNumber} saved successfully!`);
+      };
+
+      // Load a quote into the form
+      const loadQuoteIntoForm = async (quoteNumber) => {
+        const quote = await loadQuoteAsync(quoteNumber);
+        if (!quote) {
+          alert('Quote not found.');
+          return;
+        }
+
+        currentQuoteId = quoteNumber;
+        document.getElementById('quote-number').textContent = quoteNumber;
+        document.getElementById('customer-name').value = quote.customerName || '';
+
+        // Set rates
+        if (quote.rates) {
+          document.getElementById('tax-rate').value = quote.rates.taxRate;
+          document.getElementById('labor-rate').value = quote.rates.laborRate;
+          document.getElementById('ss-rate').value = quote.rates.ssRate;
+          document.getElementById('ss-max').value = quote.rates.ssMax;
+        }
+
+        // Clear existing jobs
+        document.getElementById('jobs-container').innerHTML = '';
+        jobCounter = 0;
+
+        // Add jobs from quote
+        if (quote.jobs && quote.jobs.length > 0) {
+          quote.jobs.forEach(jobData => {
+            addJob(jobData);
+          });
+        } else {
+          addJob(); // Add at least one empty job
+        }
+
+        // Recalculate
+        handleSubmit();
+      };
+
+      // Save current rates as defaults
+      const saveCurrentRates = () => {
+        const rates = {
+          taxRate: Number(document.getElementById('tax-rate').value) || DEFAULT_RATES.taxRate,
+          laborRate: Number(document.getElementById('labor-rate').value) || DEFAULT_RATES.laborRate,
+          ssRate: Number(document.getElementById('ss-rate').value) || DEFAULT_RATES.ssRate,
+          ssMax: Number(document.getElementById('ss-max').value) || DEFAULT_RATES.ssMax
+        };
+        saveGlobalRates(rates);
+      };
+
+      // Apply rates to form
+      const applyRatesToForm = (rates) => {
+        document.getElementById('tax-rate').value = rates.taxRate;
+        document.getElementById('labor-rate').value = rates.laborRate;
+        document.getElementById('ss-rate').value = rates.ssRate;
+        document.getElementById('ss-max').value = rates.ssMax;
+      };
+
+      // Create a new quote (reset form)
+      const handleNewQuote = () => {
+        currentQuoteId = null;
+        document.getElementById('quote-number').textContent = getCurrentQuoteNumber();
+        document.getElementById('customer-name').value = '';
+        
+        // Reset rates to saved defaults
+        const savedRates = loadGlobalRates();
+        applyRatesToForm(savedRates);
+
+        // Clear jobs and add one empty
+        document.getElementById('jobs-container').innerHTML = '';
+        jobCounter = 0;
+        addJob();
+
+        // Reset totals
+        document.getElementById('job-summaries').innerHTML = '';
+        document.getElementById('labor-total').textContent = '$0.00';
+        document.getElementById('parts-total').textContent = '$0.00';
+        document.getElementById('ss-total').textContent = '$0.00';
+        document.getElementById('tax-total').textContent = '$0.00';
+        document.getElementById('order-total').textContent = '$0.00';
+      };
+
+      // Render history list
+      const renderHistoryList = (historyItems) => {
+        const container = document.getElementById('history-list');
+        
+        if (historyItems.length === 0) {
+          container.innerHTML = '<div class="history-empty">No saved quotes yet.</div>';
+          return;
+        }
+
+        const html = historyItems.map(item => {
+          const date = new Date(item.timestamp).toLocaleDateString();
+          return `
+            <div class="history-item" onclick="loadQuoteIntoForm(${item.id})">
+              <div class="history-item-header">
+                <span class="history-quote-num">#${item.id}</span>
+                <span class="history-total">$${item.grandTotal.toFixed(2)}</span>
+              </div>
+              <div class="history-customer">${item.customerName}</div>
+              <div class="history-date">${date}</div>
+            </div>
+          `;
+        }).join('');
+
+        container.innerHTML = html;
+      };
+
+      // Load history asynchronously
+      const loadHistory = async () => {
+        const container = document.getElementById('history-list');
+        container.innerHTML = '<div class="loading">Loading history...</div>';
+        
+        const history = await loadHistoryAsync();
+        // Sort by most recent first
+        history.sort((a, b) => b.timestamp - a.timestamp);
+        renderHistoryList(history);
+      };
+
+      // Search history
+      const handleHistorySearch = (e) => {
+        const searchTerm = e.target.value.trim();
+        if (searchTerm === '') {
+          loadHistory();
+          return;
+        }
+        const results = searchQuotes(searchTerm);
+        results.sort((a, b) => b.timestamp - a.timestamp);
+        renderHistoryList(results);
+      };
+
+      // Event listeners
+      document.getElementById('add-job-btn').addEventListener('click', () => addJob());
+      document.getElementById('submit-btn').addEventListener('click', handleSubmit);
+      document.getElementById('save-quote-btn').addEventListener('click', handleSaveQuote);
+      document.getElementById('new-quote-btn').addEventListener('click', handleNewQuote);
+      document.getElementById('history-search').addEventListener('input', handleHistorySearch);
+
+      // Auto-save rates when changed
+      ['tax-rate', 'labor-rate', 'ss-rate', 'ss-max'].forEach(id => {
+        document.getElementById(id).addEventListener('change', saveCurrentRates);
+      });
+
+      // Settings dropdown toggle
+      const settingsBtn = document.getElementById('settings-btn');
+      const settingsDropdown = document.getElementById('settings-dropdown');
+      
+      settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsDropdown.classList.toggle('show');
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!settingsDropdown.contains(e.target) && e.target !== settingsBtn) {
+          settingsDropdown.classList.remove('show');
+        }
+      });
+
+      // Theme toggle
+      const THEME_KEY = 'quote_calculator_theme';
+      const themeToggle = document.getElementById('theme-toggle');
+      const themeSwitch = document.getElementById('theme-switch');
+
+      const setTheme = (isDark) => {
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        themeSwitch.classList.toggle('active', isDark);
+        localStorage.setItem(THEME_KEY, isDark ? 'dark' : 'light');
+      };
+
+      const loadTheme = () => {
+        const saved = localStorage.getItem(THEME_KEY);
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = saved ? saved === 'dark' : prefersDark;
+        setTheme(isDark);
+      };
+
+      themeToggle.addEventListener('click', () => {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        setTheme(currentTheme !== 'dark');
+      });
+
+      // Clear history with confirmation
+      const clearHistoryBtn = document.getElementById('clear-history-btn');
+      const confirmModal = document.getElementById('confirm-modal');
+      const modalCancel = document.getElementById('modal-cancel');
+      const modalConfirm = document.getElementById('modal-confirm');
+
+      clearHistoryBtn.addEventListener('click', () => {
+        settingsDropdown.classList.remove('show');
+        confirmModal.classList.add('show');
+      });
+
+      modalCancel.addEventListener('click', () => {
+        confirmModal.classList.remove('show');
+      });
+
+      modalConfirm.addEventListener('click', () => {
+        clearHistory();
+        confirmModal.classList.remove('show');
+        loadHistory();
+      });
+
+      // Close modal when clicking overlay
+      confirmModal.addEventListener('click', (e) => {
+        if (e.target === confirmModal) {
+          confirmModal.classList.remove('show');
+        }
+      });
+
+      // Initialize
+      document.addEventListener('DOMContentLoaded', async () => {
+        // Load theme
+        loadTheme();
+        
+        // Load saved rates
+        const savedRates = await loadGlobalRatesAsync();
+        applyRatesToForm(savedRates);
+        
+        document.getElementById('quote-number').textContent = getCurrentQuoteNumber();
+        addJob();
+        loadHistory();
+      });
+    </script>
+  </body>
+</html>
