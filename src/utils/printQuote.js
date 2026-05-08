@@ -102,7 +102,7 @@ body{font-family:Arial,sans-serif;font-size:11pt;color:#222;padding:36px}
 .qnum{font-size:20pt;font-weight:bold;color:${ACCENT}}
 .qdate{font-size:10pt;color:#666}
 
-.customer{border-left:3px solid ${ACCENT};padding-left:10px;margin-bottom:12px}
+.customer{padding-left:10px;margin-bottom:12px}
 .cname{font-size:13pt;font-weight:bold}
 .cphone{font-size:10pt;color:#555;margin-top:2px}
 
