@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "homepage": "https://smokydabear.github.io/quote-calculator/",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
