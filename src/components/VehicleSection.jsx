@@ -1,5 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import validateVin from "../utils/validateVin";
+import {
+  getCustomerVehicles,
+  saveCustomerVehicle,
+  updateCustomerVehicle,
+  deleteCustomerVehicle,
+} from "../storage";
 
 // Module-level cache — survives re-renders and re-mounts, fetched at most once per session
 // null = not yet fetched | false = fetch failed | string[] = loaded
@@ -64,9 +70,95 @@ function DecodeDialog({ result, onClose }) {
   );
 }
 
+// ── Vehicle Picker Strip ──────────────────────────────────────────────────────
+
+function vehicleLabel(v) {
+  const parts = [v.year, v.make, v.model, v.trim].filter(Boolean);
+  return parts.length ? parts.join(" ") : "Unknown Vehicle";
+}
+
+function VehiclePickerStrip({ customerId, vehicle, onChange }) {
+  const [saved, setSaved] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+
+  useEffect(() => {
+    setSaved(getCustomerVehicles(customerId));
+    setSelectedId(null);
+  }, [customerId]);
+
+  const refresh = () => setSaved(getCustomerVehicles(customerId));
+
+  const handleSelect = (v) => {
+    const { id, createdAt, ...fields } = v;
+    onChange(fields);
+    setSelectedId(v.id);
+  };
+
+  const handleDelete = (e, v) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete "${vehicleLabel(v)}"?`)) return;
+    deleteCustomerVehicle(customerId, v.id);
+    if (selectedId === v.id) setSelectedId(null);
+    refresh();
+  };
+
+  const handleSave = () => {
+    const hasData = vehicle.year || vehicle.make || vehicle.model;
+    if (!hasData) return;
+    if (selectedId) {
+      updateCustomerVehicle(customerId, selectedId, vehicle);
+    } else {
+      const created = saveCustomerVehicle(customerId, vehicle);
+      setSelectedId(created.id);
+    }
+    refresh();
+  };
+
+  return (
+    <div className="vehicle-picker">
+      <div className="vehicle-picker-header">
+        <span className="vehicle-picker-label">Saved Vehicles</span>
+        <button
+          type="button"
+          className="btn-small btn-secondary"
+          onClick={handleSave}
+          disabled={!vehicle.year && !vehicle.make && !vehicle.model}
+        >
+          {selectedId ? "Update Vehicle" : "Save Vehicle"}
+        </button>
+      </div>
+      {saved.length === 0 ? (
+        <span className="vehicle-picker-empty">
+          No vehicles saved — fill in the form below and click Save Vehicle.
+        </span>
+      ) : (
+        <div className="vehicle-picker-chips">
+          {saved.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              className={`vehicle-chip${selectedId === v.id ? " selected" : ""}`}
+              onClick={() => handleSelect(v)}
+            >
+              <span>{vehicleLabel(v)}</span>
+              <span
+                className="vehicle-chip-delete"
+                role="button"
+                onClick={(e) => handleDelete(e, v)}
+              >
+                ×
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
-function VehicleSection({ vehicle, onChange }) {
+function VehicleSection({ vehicle, onChange, customerId }) {
   const [rawMakes, setRawMakes] = useState(_makesCache);
   const [decoding, setDecoding] = useState(false);
   const [decodeError, setDecodeError] = useState("");
@@ -189,6 +281,13 @@ function VehicleSection({ vehicle, onChange }) {
   return (
     <div className="vehicle-section">
       <h3>Vehicle Information</h3>
+      {customerId && (
+        <VehiclePickerStrip
+          customerId={customerId}
+          vehicle={vehicle}
+          onChange={onChange}
+        />
+      )}
       <div className="vehicle-grid">
         <div className="form-group">
           <label>Year</label>

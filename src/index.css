@@ -1622,6 +1622,13 @@ button:hover {
   margin-bottom: 1.25rem;
 }
 
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .page-header h2 {
   margin: 0;
   font-size: 1.2em;
@@ -1867,6 +1874,80 @@ button:hover {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1em;
+}
+
+.vehicle-picker {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.vehicle-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.vehicle-picker-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.vehicle-picker-empty {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.vehicle-picker-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.vehicle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3em 0.6em;
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  background: var(--opacity);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.vehicle-chip:hover {
+  background: var(--card-bg);
+  border-color: var(--accent);
+}
+
+.vehicle-chip.selected {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.vehicle-chip-delete {
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.6;
+  padding: 0 0.1em;
+  cursor: pointer;
+}
+
+.vehicle-chip-delete:hover {
+  opacity: 1;
+}
+
+.vehicle-chip.selected .vehicle-chip-delete {
+  color: var(--accent-text);
 }
 
 .vehicle-section h3 {
@@ -2125,6 +2206,31 @@ button:hover {
   transform: none;
 }
 
+.footer-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.footer-logo-text {
+  font-size: 0.72em;
+  color: rgba(239, 237, 241, 0.45);
+}
+
+.verdant-link {
+  display: inline-block;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.15s, transform 0.15s;
+}
+
+.verdant-link:hover {
+  color: var(--accent-hover);
+  transform: translateY(-2px);
+}
+
 /* ── Settings appearance row ───────────────────────────────────────────────── */
 
 .settings-appearance-row {
@@ -2207,4 +2313,334 @@ button:hover {
 .toast-close:hover {
   opacity: 1;
   transform: none;
+}
+
+/* ── About Page ────────────────────────────────────────────────────────────── */
+
+.about-feature-list,
+.about-privacy-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.about-feature-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.75rem 1rem;
+  background: var(--opacity);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+.about-feature-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.about-feature-desc {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.about-privacy-list li {
+  padding: 0.65rem 1rem;
+  background: var(--opacity);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.about-privacy-list li strong {
+  color: var(--text-primary);
+}
+
+.about-privacy-card {
+  margin-top: 1rem;
+}
+
+.about-privacy-list li code {
+  font-family: monospace;
+  font-size: 0.85em;
+  background: var(--border-color);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  color: var(--accent);
+}
+
+/* ── Customers Page ─────────────────────────────────────────────────────────── */
+
+.page-header-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.78rem;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.12s;
+}
+
+.btn-back:hover {
+  color: var(--accent-hover);
+}
+
+.customer-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+}
+
+.customer-detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.customer-detail-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.customer-detail-phone {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.customer-vehicles-subheader {
+  margin-top: 1.25rem;
+}
+
+.customer-vehicles-heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* ── Customer Autocomplete ──────────────────────────────────────────────────── */
+
+.customer-autocomplete {
+  position: relative;
+  display: flex;
+  gap: 1em;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.customer-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.customer-dropdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  transition: background 0.1s;
+}
+
+.customer-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.customer-dropdown-item:hover {
+  background: var(--opacity);
+}
+
+.customer-dropdown-name {
+  font-weight: 600;
+}
+
+.customer-dropdown-phone {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.customer-dropdown-new {
+  color: var(--accent);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.customer-dropdown-new:hover {
+  background: var(--opacity);
+}
+
+
+/* ── CSV Loader ─────────────────────────────────────────────────────────────── */
+
+.csv-loader {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.csv-panel {
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.csv-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.csv-panel-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.csv-panel-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.csv-mapping-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.csv-mapping-row {
+  display: grid;
+  grid-template-columns: 140px 1.5rem 1fr;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.csv-field-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.csv-required {
+  color: #e74c3c;
+}
+
+.csv-arrow {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.csv-mapping-select {
+  padding: 0.35em 0.6em;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.csv-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.csv-preview-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.csv-preview-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.csv-preview-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--opacity);
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.csv-preview-cell {
+  display: flex;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+}
+
+.csv-preview-key {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.csv-preview-val {
+  color: var(--text-secondary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.csv-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.csv-done {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.csv-done-msg {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--success);
 }

@@ -137,7 +137,7 @@ const persistTasks = (tasks) => {
 export const addTask = (taskData) => {
   const tasks = getTasks();
   const task = {
-    id: Date.now().toString(),
+    id: crypto.randomUUID(),
     orderNumber: taskData.orderNumber || "",
     label: taskData.label || "",
     note: taskData.note || "",
@@ -159,6 +159,109 @@ export const toggleTask = (id) => {
 export const removeTask = (id) => {
   const tasks = getTasks().filter((t) => t.id !== id);
   persistTasks(tasks);
+};
+
+// ── Customers ────────────────────────────────────────────────────────────────
+
+const CUSTOMERS_KEY = "quote_calculator_customers";
+
+export const getCustomers = () => {
+  const data = localStorage.getItem(CUSTOMERS_KEY);
+  if (!data) return [];
+  const customers = JSON.parse(data);
+  // Backfill IDs for records saved before this field existed
+  let dirty = false;
+  for (const c of customers) {
+    if (!c.id) { c.id = crypto.randomUUID(); dirty = true; }
+  }
+  if (dirty) localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(customers));
+  return customers;
+};
+
+const persistCustomers = (customers) =>
+  localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(customers));
+
+export const saveCustomer = (data) => {
+  const customers = getCustomers();
+  const customer = {
+    id: crypto.randomUUID(),
+    name: data.name?.trim() || "",
+    phone: data.phone?.trim() || "",
+    createdAt: Date.now(),
+  };
+  customers.push(customer);
+  persistCustomers(customers);
+  return customer;
+};
+
+export const updateCustomer = (id, data) => {
+  persistCustomers(
+    getCustomers().map((c) =>
+      c.id === id ? { ...c, name: data.name?.trim() || "", phone: data.phone?.trim() || "" } : c
+    )
+  );
+};
+
+export const deleteCustomer = (id) => {
+  persistCustomers(getCustomers().filter((c) => c.id !== id));
+};
+
+export const searchCustomers = (term) => {
+  const q = term.toLowerCase();
+  const qDigits = term.replace(/\D/g, "");
+  return getCustomers().filter(
+    (c) =>
+      c.name.toLowerCase().includes(q) ||
+      (qDigits && c.phone.replace(/\D/g, "").includes(qDigits))
+  );
+};
+
+// ── Customer Vehicles ────────────────────────────────────────────────────────
+
+const vehicleKey = (customerId) => `${customerId}-vehicles`;
+
+export const getCustomerVehicles = (customerId) => {
+  const data = localStorage.getItem(vehicleKey(customerId));
+  return data ? JSON.parse(data) : [];
+};
+
+const persistVehicles = (customerId, vehicles) =>
+  localStorage.setItem(vehicleKey(customerId), JSON.stringify(vehicles));
+
+export const saveCustomerVehicle = (customerId, data) => {
+  const vehicles = getCustomerVehicles(customerId);
+  const vehicle = {
+    id: crypto.randomUUID(),
+    year: data.year || "",
+    make: data.make || "",
+    model: data.model || "",
+    trim: data.trim || "",
+    vin: data.vin || "",
+    mileage: data.mileage || "",
+    createdAt: Date.now(),
+  };
+  vehicles.push(vehicle);
+  persistVehicles(customerId, vehicles);
+  return vehicle;
+};
+
+export const updateCustomerVehicle = (customerId, vehicleId, data) => {
+  persistVehicles(
+    customerId,
+    getCustomerVehicles(customerId).map((v) =>
+      v.id === vehicleId
+        ? { ...v, year: data.year || "", make: data.make || "", model: data.model || "",
+            trim: data.trim || "", vin: data.vin || "", mileage: data.mileage || "" }
+        : v
+    )
+  );
+};
+
+export const deleteCustomerVehicle = (customerId, vehicleId) => {
+  persistVehicles(
+    customerId,
+    getCustomerVehicles(customerId).filter((v) => v.id !== vehicleId)
+  );
 };
 
 // ── Business Info ─────────────────────────────────────────────────────────────
@@ -189,7 +292,7 @@ const persistTemplates = (templates) =>
 export const saveJobTemplate = (data) => {
   const templates = getJobTemplates();
   const template = {
-    id: Date.now().toString(),
+    id: crypto.randomUUID(),
     name: data.name || "Template",
     description: data.description || "",
     laborHrs: Number(data.laborHrs) || 0,
@@ -227,7 +330,7 @@ const persistLibraryParts = (parts) =>
 export const saveLibraryPart = (data) => {
   const parts = getPartsLibrary();
   const part = {
-    id: Date.now().toString(),
+    id: crypto.randomUUID(),
     partNumber: data.partNumber || "",
     name: data.name || "",
     price: Number(data.price) || 0,

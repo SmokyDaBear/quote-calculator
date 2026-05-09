@@ -1,3 +1,5 @@
+import { formatPhone } from "./formatPhone";
+
 const ACCENT = '#2e9e6b';
 
 const fmt = (n) => `$${Number(n).toFixed(2)}`;
@@ -62,7 +64,7 @@ function businessHeaderHTML(biz) {
   const logoTag = biz.logo ? `<img src="${biz.logo}" class="biz-logo" alt="Logo"/>` : '';
   const info = [
     biz.name ? `<div class="biz-name">${biz.name}</div>` : '',
-    biz.phone ? `<div class="biz-detail">${biz.phone}</div>` : '',
+    biz.phone ? `<div class="biz-detail">${formatPhone(biz.phone)}</div>` : '',
     biz.address ? `<div class="biz-detail">${biz.address.replace(/\n/g, '<br/>')}</div>` : '',
   ].join('');
   return `<div class="biz-header">${logoTag}<div class="biz-info">${info}</div></div>`;
@@ -146,7 +148,7 @@ ${businessHeaderHTML(businessInfo)}
 </div>
 <div class="customer">
   <div class="cname">${customerName || 'Customer'}</div>
-  ${phone ? `<div class="cphone">${phone}</div>` : ''}
+  ${phone ? `<div class="cphone">${formatPhone(phone)}</div>` : ''}
 </div>
 ${vehicleHTML(vehicle)}
 ${notes && notes.trim() ? `<div class="notes-box"><div class="notes-label">Notes</div>${notes.trim()}</div>` : ''}

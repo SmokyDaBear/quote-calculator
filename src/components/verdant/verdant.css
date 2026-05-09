@@ -1,0 +1,59 @@
+@property --bg-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes rotate {
+  0% {
+    --bg-angle: 0deg;
+  }
+  100% {
+    --bg-angle: 360deg;
+  }
+}
+
+.footer-logo {
+  --bg-logo: rgb(36, 36, 36);
+  --verdant-alt: #19ffc5;
+  --verdant-green: #077438;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+
+}
+
+.rotating-bg {
+  background: repeating-conic-gradient(
+    from var(--bg-angle),
+    var(--verdant-green) 0%,
+    var(--verdant-alt) 50%,
+    var(--verdant-green) 100%
+  );
+}
+.verdant-link {
+  color: var(--verdant-green);
+  text-decoration: none;
+  transition:
+    color 0.3s ease,
+    background-color 0.3s ease,
+    transform 0.3s ease;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  transform: none;
+}
+.verdant-link:hover {
+  color: var(--verdant-alt);
+  background-color: var(--opacity, rgba(0, 0, 0, 0.1));
+  transform: translateX(2px);
+  box-shadow: 0 4px 6px rgba(189, 189, 189, 0.1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rotating-bg {
+    animation: rotate 4s linear infinite;
+  }
+}

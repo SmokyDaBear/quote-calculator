@@ -1,3 +1,5 @@
+import { formatPhone } from "../utils/formatPhone";
+
 function HistorySidebar({ history, searchTerm, onSearch, onLoadQuote, onDeleteQuote }) {
   return (
     <aside className="history-sidebar">
@@ -35,7 +37,7 @@ function HistorySidebar({ history, searchTerm, onSearch, onLoadQuote, onDeleteQu
                 </div>
               </div>
               <div className="history-customer">{item.customerName}</div>
-              {item.phone && <div className="history-phone">{item.phone}</div>}
+              {item.phone && <div className="history-phone">{formatPhone(item.phone)}</div>}
               <div className="history-date">
                 {new Date(item.timestamp).toLocaleDateString()}
               </div>

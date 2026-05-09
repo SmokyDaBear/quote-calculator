@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   getPartsLibrary, saveLibraryPart, updateLibraryPart, deleteLibraryPart,
 } from '../storage';
+import { CSVLoader } from './CSVLoader';
 
 const EMPTY_FORM = { partNumber: '', name: '', price: '', description: '' };
 
@@ -107,7 +108,10 @@ function InventoryPage({ onToast }) {
       <div className="page-header">
         <h2>{view === 'list' ? 'Inventory' : view?.editing ? 'Edit Part' : 'New Part'}</h2>
         {view === 'list' && (
-          <button className="btn-small" onClick={openNew}>+ New Part</button>
+          <div className="page-header-actions">
+            <CSVLoader type="parts" onRefresh={refresh} onToast={onToast} />
+            <button className="btn-small" onClick={openNew}>+ New Part</button>
+          </div>
         )}
       </div>
 

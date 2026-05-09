@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Modal from "./components/Modal";
 import HistorySidebar from "./components/HistorySidebar";
 import QuoteInfo from "./components/QuoteInfo";
@@ -11,10 +11,11 @@ import PartPickerModal from "./components/PartPickerModal";
 import TemplatesPage from "./components/TemplatesPage";
 import InventoryPage from "./components/InventoryPage";
 import SettingsPage from "./components/SettingsPage";
+import CustomersPage from "./components/CustomersPage";
 import VehicleSection from "./components/VehicleSection";
 import { printQuote } from "./utils/printQuote";
 import { useToast, ToastContainer } from "./components/Toast";
-import { IconQuote, IconTemplates, IconInventory, IconSettings } from "./icons";
+import { IconQuote, IconTemplates, IconInventory, IconSettings, IconAbout, IconCustomers } from "./icons";
 import {
   loadGlobalRates,
   saveGlobalRates,
@@ -30,6 +31,7 @@ import {
   loadBusinessInfo,
   saveBusinessInfo,
 } from "./storage";
+import { About } from "./components/About";
 
 const THEME_KEY = "quote_calculator_theme";
 
@@ -58,10 +60,12 @@ const migrateJobParts = (parts) => {
 };
 
 const NAV_TABS = [
-  { id: "quote", label: "Quote Calculator", icon: <IconQuote /> },
-  { id: "templates", label: "Job Templates", icon: <IconTemplates /> },
-  { id: "inventory", label: "Inventory", icon: <IconInventory /> },
-  { id: "settings", label: "Settings", icon: <IconSettings /> },
+  { id: "quote",     label: "Quote Calculator", icon: <IconQuote /> },
+  { id: "templates", label: "Job Templates",    icon: <IconTemplates /> },
+  { id: "inventory", label: "Inventory",        icon: <IconInventory /> },
+  { id: "customers", label: "Customers",        icon: <IconCustomers /> },
+  { id: "about",     label: "About",            icon: <IconAbout /> },
+  { id: "settings",  label: "Settings",         icon: <IconSettings /> },
 ];
 
 function App() {
@@ -72,6 +76,7 @@ function App() {
   const [businessInfo, setBusinessInfo] = useState(() => loadBusinessInfo());
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
+  const [customerId, setCustomerId] = useState(null);
   const [notes, setNotes] = useState("");
   const [vehicle, setVehicle] = useState({
     year: "",
@@ -98,7 +103,6 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [partPickerJobId, setPartPickerJobId] = useState(null);
 
-  const resultsRef = useRef(null);
   const { toasts, toast, dismiss } = useToast();
 
   useEffect(() => {
@@ -212,6 +216,7 @@ function App() {
     setQuoteNumber(getCurrentQuoteNumber());
     setCustomerName("");
     setPhone("");
+    setCustomerId(null);
     setNotes("");
     setVehicle(EMPTY_VEHICLE);
     setRates(loadGlobalRates());
@@ -222,6 +227,7 @@ function App() {
   const buildQuoteData = () => ({
     customerName: customerName.trim(),
     phone,
+    customerId,
     notes,
     vehicle,
     rates,
@@ -273,6 +279,7 @@ function App() {
     setQuoteNumber(quoteId);
     setCustomerName(quote.customerName || "");
     setPhone(quote.phone || "");
+    setCustomerId(quote.customerId || null);
     setNotes(quote.notes || "");
     setVehicle(quote.vehicle || EMPTY_VEHICLE);
     if (quote.rates) setRates(quote.rates);
@@ -318,8 +325,6 @@ function App() {
     handleNewQuote();
   };
 
-  const handleCalculate = () =>
-    resultsRef.current?.scrollIntoView({ behavior: "smooth" });
 
   const handlePrint = () => {
     printQuote({
@@ -425,8 +430,9 @@ function App() {
                 phone={phone}
                 setPhone={setPhone}
                 onNewQuote={handleNewQuote}
+                onCustomerSelect={(c) => setCustomerId(c ? c.id : null)}
               />
-              <VehicleSection vehicle={vehicle} onChange={setVehicle} />
+              <VehicleSection vehicle={vehicle} onChange={setVehicle} customerId={customerId} />
               <NotesSection notes={notes} onChange={setNotes} />
               <JobsSection
                 jobs={jobs}
@@ -439,9 +445,6 @@ function App() {
                 onApplyTemplate={handleApplyTemplate}
               />
               <div className="action-buttons">
-                <button type="button" className="btn" onClick={handleCalculate}>
-                  Calculate Total
-                </button>
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -466,7 +469,7 @@ function App() {
                   {currentQuoteId ? `Update #${currentQuoteId}` : "Save Quote"}
                 </button>
               </div>
-              <ResultsSection ref={resultsRef} totals={totals} />
+              <ResultsSection totals={totals} />
             </div>
             <TasksPanel />
           </div>
@@ -479,6 +482,8 @@ function App() {
           />
         )}
         {activeView === "inventory" && <InventoryPage onToast={toast} />}
+        {activeView === "customers" && <CustomersPage onToast={toast} />}
+        {activeView === "about" && (<About/>)}
         {activeView === "settings" && (
           <SettingsPage
             rates={rates}

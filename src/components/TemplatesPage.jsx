@@ -3,6 +3,7 @@ import {
   getJobTemplates, saveJobTemplate, updateJobTemplate, deleteJobTemplate,
 } from '../storage';
 import PartPickerModal from './PartPickerModal';
+import { CSVLoader } from './CSVLoader';
 
 const EMPTY_FORM = { name: '', description: '', laborHrs: '', laborCost: '', parts: [] };
 
@@ -190,7 +191,10 @@ function TemplatesPage({ onApplyTemplate, onSwitchToQuote, onToast }) {
       <div className="page-header">
         <h2>{view === 'list' ? 'Job Templates' : view?.editing ? 'Edit Template' : 'New Template'}</h2>
         {view === 'list' && (
-          <button className="btn-small" onClick={openNew}>+ New Template</button>
+          <div className="page-header-actions">
+            <CSVLoader type="templates" onRefresh={refresh} onToast={onToast} />
+            <button className="btn-small" onClick={openNew}>+ New Template</button>
+          </div>
         )}
       </div>
 

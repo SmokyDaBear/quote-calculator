@@ -1,10 +1,8 @@
-import { forwardRef } from 'react';
-
 const fmt = (n) => `$${n.toFixed(2)}`;
 
-const ResultsSection = forwardRef(function ResultsSection({ totals }, ref) {
+function ResultsSection({ totals }) {
   return (
-    <div className="results-section" ref={ref}>
+    <div className="results-section">
       <h3>Quote Summary</h3>
       <div className="job-summaries">
         {totals.jobSummaries.map((s) => (
@@ -44,6 +42,6 @@ const ResultsSection = forwardRef(function ResultsSection({ totals }, ref) {
       </div>
     </div>
   );
-});
+}
 
 export default ResultsSection;
