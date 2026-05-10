@@ -1,0 +1,118 @@
+import { useState, useEffect, useRef } from "react";
+function searchLibrary(library, term) {
+  if (!term.trim()) return [];
+  const q = term.toLowerCase();
+  return library
+    .filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.partNumber || "").toLowerCase().includes(q),
+    )
+    .slice(0, 7);
+}
+
+function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtList = false }) {
+  const [results, setResults] = useState([]);
+  const wrapperRef = useRef(null);
+
+  const search = (term) => setResults(searchLibrary(library, term));
+
+  const handleFieldChange = (field, value) => {
+    onUpdate(idx, field, value);
+    search(value);
+  };
+
+  const handleFocus = (field) => {
+    const term = field === "partNumber" ? part.partNumber : part.name;
+    if (term.trim()) search(term);
+  };
+
+  const selectPart = (p) => {
+    const sellPrice = (priceAtList && p.msrp) ? p.msrp : p.price;
+    onReplace(idx, {
+      partNumber: p.partNumber || "",
+      name: p.name,
+      price: sellPrice.toString(),
+      msrp: p.msrp ? p.msrp.toString() : "",
+      cost: p.cost ? p.cost.toString() : "",
+    });
+    setResults([]);
+  };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setResults([]);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const extended = (Number(part.price) || 0) * (Number(part.quantity) || 0);
+
+  return (
+    <div className="part-row-wrapper" ref={wrapperRef}>
+      <div className="part-row">
+        <input
+          type="text"
+          placeholder="Part #"
+          value={part.partNumber}
+          autoComplete="off"
+          onChange={(e) => handleFieldChange("partNumber", e.target.value)}
+          onFocus={() => handleFocus("partNumber")}
+        />
+        <input
+          type="text"
+          placeholder="Name"
+          value={part.name}
+          autoComplete="off"
+          onChange={(e) => handleFieldChange("name", e.target.value)}
+          onFocus={() => handleFocus("name")}
+        />
+        <input
+          type="number"
+          step="0.01"
+          placeholder="0.00"
+          value={part.price}
+          onChange={(e) => onUpdate(idx, "price", e.target.value)}
+        />
+        <input
+          type="number"
+          step="1"
+          min="1"
+          placeholder="1"
+          value={part.quantity}
+          onChange={(e) => onUpdate(idx, "quantity", e.target.value)}
+        />
+        <span className="part-extended">${extended.toFixed(2)}</span>
+        <button
+          type="button"
+          className="btn-remove"
+          onClick={() => onRemove(idx)}
+        >
+          ×
+        </button>
+      </div>
+      {results.length > 0 && (
+        <div className="part-autocomplete-dropdown">
+          {results.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className="part-autocomplete-item"
+              onMouseDown={() => selectPart(p)}
+            >
+              <span className="part-autocomplete-name">{p.name}</span>
+              <span className="part-autocomplete-meta">
+                {p.partNumber ? `#${p.partNumber} · ` : ""}$
+                {Number(p.price).toFixed(2)}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+export default PartRow; 

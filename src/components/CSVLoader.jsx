@@ -50,7 +50,7 @@ function autoMatch(appKey, csvHeaders) {
   return csvHeaders.find((h) => aliases.includes(normalize(h))) || "";
 }
 
-function parseCSV(text) {
+export function parseCSV(text) {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return { headers: [], rows: [] };
 

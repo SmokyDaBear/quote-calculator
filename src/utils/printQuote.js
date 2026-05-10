@@ -34,14 +34,12 @@ function jobsHTML(jobs, totals) {
         s?.laborCost > 0 ?
           `<span>Labor${s.laborHrs > 0 ? ` (${s.laborHrs} hrs)` : ""}: ${fmt(s.laborCost)}</span>`
         : "";
-      const ssLine =
-        s?.ssTotal > 0 ? `<span>Shop Supplies: ${fmt(s.ssTotal)}</span>` : "";
       return `<div class="job">
       <div class="job-title">${job.name || `Job ${i + 1}`}</div>
       ${job.description ? `<div class="job-desc">${job.description}</div>` : ""}
       ${partsTableHTML(job.parts)}
       <div class="job-meta">
-        ${laborLine}${ssLine}
+        ${laborLine}
         <span class="job-sub">Subtotal: ${fmt(s?.subtotal ?? 0)}</span>
       </div>
     </div>`;

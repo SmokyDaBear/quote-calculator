@@ -13,9 +13,21 @@ import InventoryPage from "./components/InventoryPage";
 import SettingsPage from "./components/SettingsPage";
 import CustomersPage from "./components/CustomersPage";
 import VehicleSection from "./components/VehicleSection";
+import ServiceRecommendations from "./components/ServiceRecommendations";
+import QuickJobs from "./components/QuickJobs";
+import TemplateFillModal from "./components/TemplateFillModal";
 import { printQuote } from "./utils/printQuote";
 import { useToast, ToastContainer } from "./components/Toast";
-import { IconQuote, IconTemplates, IconInventory, IconSettings, IconAbout, IconCustomers } from "./icons";
+import {
+  IconQuote,
+  IconTemplates,
+  IconInventory,
+  IconSettings,
+  IconAbout,
+  IconCustomers,
+  PrintIcon,
+  SaveIcon,
+} from "./icons";
 import {
   loadGlobalRates,
   saveGlobalRates,
@@ -30,7 +42,10 @@ import {
   saveJobTemplate,
   loadBusinessInfo,
   saveBusinessInfo,
+  loadAccent,
+  saveAccent,
 } from "./storage";
+import { ACCENT_PRESETS } from "./utils/accentPresets";
 import { About } from "./components/About";
 
 const THEME_KEY = "quote_calculator_theme";
@@ -60,12 +75,12 @@ const migrateJobParts = (parts) => {
 };
 
 const NAV_TABS = [
-  { id: "quote",     label: "Quote Calculator", icon: <IconQuote /> },
-  { id: "templates", label: "Job Templates",    icon: <IconTemplates /> },
-  { id: "inventory", label: "Inventory",        icon: <IconInventory /> },
-  { id: "customers", label: "Customers",        icon: <IconCustomers /> },
-  { id: "about",     label: "About",            icon: <IconAbout /> },
-  { id: "settings",  label: "Settings",         icon: <IconSettings /> },
+  { id: "quote", label: "Quotes", icon: <IconQuote /> },
+  { id: "templates", label: "Job Templates", icon: <IconTemplates /> },
+  { id: "inventory", label: "Inventory", icon: <IconInventory /> },
+  { id: "customers", label: "Customers", icon: <IconCustomers /> },
+  { id: "about", label: "About", icon: <IconAbout /> },
+  { id: "settings", label: "Settings", icon: <IconSettings /> },
 ];
 
 function App() {
@@ -100,10 +115,16 @@ function App() {
     ).matches;
     return saved ? saved === "dark" : prefersDark;
   });
+  const [accent, setAccent] = useState(() => loadAccent());
   const [modalOpen, setModalOpen] = useState(false);
+  const [fillModal, setFillModal] = useState(null);
   const [mobilePanel, setMobilePanel] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
-  const [discount, setDiscount] = useState({ type: "percentage", value: "", appliesTo: "both" });
+  const [discount, setDiscount] = useState({
+    type: "percentage",
+    value: "",
+    appliesTo: "both",
+  });
 
   const { toasts, toast, dismiss } = useToast();
 
@@ -118,6 +139,19 @@ function App() {
     localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
   }, [isDark]);
 
+  useEffect(() => {
+    const preset =
+      ACCENT_PRESETS.find((p) => p.id === accent) ?? ACCENT_PRESETS[0];
+    const colors = isDark ? preset.dark : preset.light;
+    const el = document.documentElement;
+    el.style.setProperty("--accent", colors.accent);
+    el.style.setProperty("--accent-hover", colors.accentHover);
+    el.style.setProperty("--accent-ring", colors.accentRing);
+    el.style.setProperty("--success", colors.accent);
+    el.style.setProperty("--success-hover", colors.accentHover);
+    saveAccent(accent);
+  }, [accent, isDark]);
+
   const totals = useMemo(() => {
     let grandLaborCost = 0;
     let grandLaborHours = 0;
@@ -131,15 +165,12 @@ function App() {
       );
       const laborHrs = Number(job.laborHrs) || 0;
       const laborCost = Number(job.laborCost) || 0;
-      const ssPercentage = rates.ssRate * 0.01;
-      let ssTotal = ssPercentage * laborCost;
-      if (ssTotal > rates.ssMax) ssTotal = rates.ssMax;
-      const subtotal = laborCost + partsTotal + ssTotal;
+      const subtotal = laborCost + partsTotal;
 
       grandLaborCost += laborCost;
       grandLaborHours += laborHrs;
       grandPartsTotal += partsTotal;
-      grandSsTotal += ssTotal;
+      grandSsTotal += rates.ssRate * 0.01 * laborCost;
 
       return {
         id: job.id,
@@ -147,10 +178,11 @@ function App() {
         laborCost,
         laborHrs,
         partsTotal,
-        ssTotal,
         subtotal,
       };
     });
+
+    grandSsTotal = Math.min(grandSsTotal, rates.ssMax);
 
     const taxableAmount = grandPartsTotal + grandSsTotal;
     const taxTotal = taxableAmount * (rates.taxRate * 0.01);
@@ -163,13 +195,17 @@ function App() {
         : discount.appliesTo === "labor" ? grandLaborCost
         : grandLaborCost + grandPartsTotal;
       discountAmount =
-        discount.type === "percentage"
-          ? base * (discountValue / 100)
-          : Math.min(discountValue, base);
+        discount.type === "percentage" ?
+          base * (discountValue / 100)
+        : Math.min(discountValue, base);
     }
 
     const grandTotal =
-      grandLaborCost + grandPartsTotal + grandSsTotal + taxTotal - discountAmount;
+      grandLaborCost +
+      grandPartsTotal +
+      grandSsTotal +
+      taxTotal -
+      discountAmount;
 
     return {
       jobSummaries,
@@ -351,7 +387,6 @@ function App() {
     handleNewQuote();
   };
 
-
   const handlePrint = () => {
     printQuote({
       quoteNumber,
@@ -383,7 +418,7 @@ function App() {
     toast(`Template "${job.name}" saved.`);
   };
 
-  const handleApplyTemplate = (template) => {
+  const applyTemplateWithParts = (template, resolvedParts) => {
     const newId = jobCounter + 1;
     setJobCounter(newId);
     setJobs((prev) => [
@@ -391,7 +426,7 @@ function App() {
       {
         id: newId,
         name: template.name,
-        parts: template.parts.map((p) => ({
+        parts: resolvedParts.map((p) => ({
           partNumber: p.partNumber || "",
           name: p.name || "",
           price: p.price?.toString() || "",
@@ -404,11 +439,32 @@ function App() {
     ]);
   };
 
+  const handleApplyTemplate = (template) => {
+    const hasSlots = (template.parts || []).some((p) => p.type === "category");
+    if (hasSlots) {
+      setFillModal({ template });
+      setActiveView("quote");
+    } else {
+      applyTemplateWithParts(template, template.parts || []);
+    }
+  };
+
   return (
     <div className="app-root">
       <div className={`app-header-wrap${navOpen ? " nav-open" : ""}`}>
         <header>
-          <h1>Quote Calculator</h1>
+          {businessInfo.name || businessInfo.logo ? (
+            <div className="header-brand">
+              {businessInfo.logo && (
+                <img src={businessInfo.logo} alt="Logo" className="header-logo" />
+              )}
+              {businessInfo.name && (
+                <span className="header-biz-name">{businessInfo.name}</span>
+              )}
+            </div>
+          ) : (
+            <h1>Quote Calculator</h1>
+          )}
           <button
             className="nav-hamburger"
             aria-label="Toggle navigation"
@@ -426,7 +482,10 @@ function App() {
               <button
                 key={tab.id}
                 className={`main-nav-tab${activeView === tab.id ? " active" : ""}`}
-                onClick={() => { setActiveView(tab.id); setNavOpen(false); }}
+                onClick={() => {
+                  setActiveView(tab.id);
+                  setNavOpen(false);
+                }}
               >
                 {tab.icon}
                 {tab.label}
@@ -456,7 +515,9 @@ function App() {
       </div>
 
       <div className="app-body">
-        <aside className={`app-sidebar-left${mobilePanel === "history" ? " mobile-open" : ""}`}>
+        <aside
+          className={`app-sidebar-left${mobilePanel === "history" ? " mobile-open" : ""}`}
+        >
           <HistorySidebar
             history={history}
             searchTerm={searchTerm}
@@ -478,8 +539,21 @@ function App() {
                 onNewQuote={handleNewQuote}
                 onCustomerSelect={(c) => setCustomerId(c ? c.id : null)}
               />
-              <VehicleSection vehicle={vehicle} onChange={setVehicle} customerId={customerId} />
+              <VehicleSection
+                vehicle={vehicle}
+                onChange={setVehicle}
+                customerId={customerId}
+              />
               <NotesSection notes={notes} onChange={setNotes} />
+              <QuickJobs
+                jobs={jobs}
+                onApplyTemplate={handleApplyTemplate}
+              />
+              <ServiceRecommendations
+                mileage={vehicle.mileage}
+                jobs={jobs}
+                onApplyTemplate={handleApplyTemplate}
+              />
               <JobsSection
                 jobs={jobs}
                 totals={totals}
@@ -490,13 +564,13 @@ function App() {
                 onApplyTemplate={handleApplyTemplate}
               />
               <DiscountSection discount={discount} onChange={setDiscount} />
-              <div className="action-buttons">
+              <div className="action-buttons quote-actions">
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={handlePrint}
                 >
-                  Print Quote
+                  <PrintIcon /> Print Quote
                 </button>
                 {currentQuoteId && (
                   <button
@@ -504,7 +578,7 @@ function App() {
                     className="btn btn-success"
                     onClick={handleSaveQuote}
                   >
-                    Save as New
+                    <SaveIcon /> Save as New
                   </button>
                 )}
                 <button
@@ -512,6 +586,7 @@ function App() {
                   className={`btn ${currentQuoteId ? "btn-warning" : "btn-success"}`}
                   onClick={currentQuoteId ? handleUpdateQuote : handleSaveQuote}
                 >
+                  <SaveIcon />
                   {currentQuoteId ? `Update #${currentQuoteId}` : "Save Quote"}
                 </button>
               </div>
@@ -525,7 +600,7 @@ function App() {
               onToast={toast}
             />
           )}
-          {activeView === "inventory" && <InventoryPage onToast={toast} />}
+          {activeView === "inventory" && <InventoryPage onToast={toast} markupMatrix={rates.partsMarkupMatrix} />}
           {activeView === "customers" && <CustomersPage onToast={toast} />}
           {activeView === "about" && <About />}
           {activeView === "settings" && (
@@ -536,12 +611,17 @@ function App() {
               onBusinessChange={handleBusinessChange}
               isDark={isDark}
               onToggleTheme={() => setIsDark((d) => !d)}
+              accent={accent}
+              onAccentChange={setAccent}
               onClearHistory={() => setModalOpen(true)}
+              onToast={toast}
             />
           )}
         </main>
 
-        <aside className={`app-sidebar-right${mobilePanel === "tasks" ? " mobile-open" : ""}`}>
+        <aside
+          className={`app-sidebar-right${mobilePanel === "tasks" ? " mobile-open" : ""}`}
+        >
           <TasksPanel />
         </aside>
       </div>
@@ -551,6 +631,16 @@ function App() {
         isDark={isDark}
         onToggleTheme={() => setIsDark((d) => !d)}
       />
+      {fillModal && (
+        <TemplateFillModal
+          template={fillModal.template}
+          onConfirm={(resolvedParts) => {
+            applyTemplateWithParts(fillModal.template, resolvedParts);
+            setFillModal(null);
+          }}
+          onCancel={() => setFillModal(null)}
+        />
+      )}
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </div>
   );

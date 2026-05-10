@@ -1,117 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { getPartsLibrary } from '../storage';
+import { EditIcon } from '../icons';
+import PartRow from './PartRow';
 
-function searchLibrary(library, term) {
-  if (!term.trim()) return [];
-  const q = term.toLowerCase();
-  return library
-    .filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        (p.partNumber || '').toLowerCase().includes(q)
-    )
-    .slice(0, 7);
-}
 
-function PartRow({ part, idx, library, onUpdate, onReplace, onRemove }) {
-  const [results, setResults] = useState([]);
-  const wrapperRef = useRef(null);
-
-  const search = (term) => setResults(searchLibrary(library, term));
-
-  const handleFieldChange = (field, value) => {
-    onUpdate(idx, field, value);
-    search(value);
-  };
-
-  const handleFocus = (field) => {
-    const term = field === 'partNumber' ? part.partNumber : part.name;
-    if (term.trim()) search(term);
-  };
-
-  const selectPart = (p) => {
-    onReplace(idx, {
-      partNumber: p.partNumber || '',
-      name: p.name,
-      price: p.price.toString(),
-    });
-    setResults([]);
-  };
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        setResults([]);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const extended = (Number(part.price) || 0) * (Number(part.quantity) || 0);
-
-  return (
-    <div className="part-row-wrapper" ref={wrapperRef}>
-      <div className="part-row">
-        <input
-          type="text"
-          placeholder="Part #"
-          value={part.partNumber}
-          autoComplete="off"
-          onChange={(e) => handleFieldChange('partNumber', e.target.value)}
-          onFocus={() => handleFocus('partNumber')}
-        />
-        <input
-          type="text"
-          placeholder="Name"
-          value={part.name}
-          autoComplete="off"
-          onChange={(e) => handleFieldChange('name', e.target.value)}
-          onFocus={() => handleFocus('name')}
-        />
-        <input
-          type="number"
-          step="0.01"
-          placeholder="0.00"
-          value={part.price}
-          onChange={(e) => onUpdate(idx, 'price', e.target.value)}
-        />
-        <input
-          type="number"
-          step="1"
-          min="1"
-          placeholder="1"
-          value={part.quantity}
-          onChange={(e) => onUpdate(idx, 'quantity', e.target.value)}
-        />
-        <span className="part-extended">${extended.toFixed(2)}</span>
-        <button type="button" className="btn-remove" onClick={() => onRemove(idx)}>
-          ×
-        </button>
-      </div>
-      {results.length > 0 && (
-        <div className="part-autocomplete-dropdown">
-          {results.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              className="part-autocomplete-item"
-              onMouseDown={() => selectPart(p)}
-            >
-              <span className="part-autocomplete-name">{p.name}</span>
-              <span className="part-autocomplete-meta">
-                {p.partNumber ? `#${p.partNumber} · ` : ''}${Number(p.price).toFixed(2)}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate }) {
+function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate, isBlank }) {
   const [library, setLibrary] = useState(() => getPartsLibrary());
+  const [isEditing, setIsEditing] = useState(!!isBlank);
 
   const addPart = () => {
     onUpdate(job.id, 'parts', [
@@ -145,6 +40,49 @@ function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate }) {
     0
   );
 
+  const laborCost = Number(job.laborCost) || 0;
+  const laborHrs = Number(job.laborHrs) || 0;
+
+  if (!isEditing) {
+    return (
+      <div className="job-card job-card--collapsed">
+        <div className="job-card-collapsed-header">
+          <span className="job-card-collapsed-name">{job.name || 'Unnamed Job'}</span>
+          <div className="job-card-collapsed-actions">
+            <button
+              type="button"
+              className="btn-small btn-secondary"
+              onClick={() => setIsEditing(true)}
+            ><EditIcon/>
+              Edit
+            </button>
+            <button type="button" className="btn-remove" onClick={() => onRemove(job.id)}>
+              ×
+            </button>
+          </div>
+        </div>
+        <div className="job-card-collapsed-summary">
+          {laborCost > 0 && (
+            <span>
+              Labor: {laborHrs > 0 ? `${laborHrs} hrs · ` : ''}${laborCost.toFixed(2)}
+            </span>
+          )}
+          {job.parts.length > 0 && (
+            <span>
+              {job.parts.length} part{job.parts.length !== 1 ? 's' : ''} · ${partsTotal.toFixed(2)}
+            </span>
+          )}
+          <span className="job-card-collapsed-subtotal">
+            Subtotal: ${subtotal.toFixed(2)}
+          </span>
+        </div>
+        {job.description && (
+          <div className="job-card-collapsed-desc">{job.description}</div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="job-card" data-job-id={job.id}>
       <div className="job-header">
@@ -154,9 +92,18 @@ function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate }) {
           value={job.name}
           onChange={(e) => onUpdate(job.id, 'name', e.target.value)}
         />
-        <button type="button" className="btn-remove" onClick={() => onRemove(job.id)}>
-          ×
-        </button>
+        <div className="job-header-actions">
+          <button
+            type="button"
+            className="btn-small btn-secondary"
+            onClick={() => setIsEditing(false)}
+          >
+            Done
+          </button>
+          <button type="button" className="btn-remove" onClick={() => onRemove(job.id)}>
+            ×
+          </button>
+        </div>
       </div>
 
       <div className="job-inputs">
@@ -179,6 +126,16 @@ function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate }) {
             value={job.laborCost}
             onChange={(e) => onUpdate(job.id, 'laborCost', e.target.value)}
           />
+        </div>
+        <div className="form-group form-group--checkbox">
+          <label className="price-at-list-label">
+            <input
+              type="checkbox"
+              checked={job.priceAtList || false}
+              onChange={(e) => onUpdate(job.id, 'priceAtList', e.target.checked)}
+            />
+            Price at List
+          </label>
         </div>
       </div>
 
@@ -208,6 +165,7 @@ function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate }) {
                 onUpdate={updatePart}
                 onReplace={replacePart}
                 onRemove={removePart}
+                priceAtList={job.priceAtList || false}
               />
             ))}
             <div className="parts-total-row">

@@ -1,3 +1,5 @@
+import { DEFAULT_MARKUP_MATRIX } from './utils/partsMarkup';
+
 const STORAGE_KEY = "quote_calculator_history";
 const QUOTE_COUNTER_KEY = "quote_calculator_counter";
 const RATES_KEY = "quote_calculator_rates";
@@ -7,6 +9,7 @@ export const DEFAULT_RATES = {
   laborRate: 215,
   ssRate: 15,
   ssMax: 54.95,
+  partsMarkupMatrix: DEFAULT_MARKUP_MATRIX,
 };
 
 export const saveGlobalRates = (rates) => {
@@ -22,6 +25,7 @@ export const loadGlobalRates = () => {
       laborRate: parsed.laborRate ?? DEFAULT_RATES.laborRate,
       ssRate: parsed.ssRate ?? DEFAULT_RATES.ssRate,
       ssMax: parsed.ssMax ?? DEFAULT_RATES.ssMax,
+      partsMarkupMatrix: parsed.partsMarkupMatrix ?? DEFAULT_MARKUP_MATRIX,
     };
   }
   return { ...DEFAULT_RATES };
@@ -264,6 +268,13 @@ export const deleteCustomerVehicle = (customerId, vehicleId) => {
   );
 };
 
+// ── Accent ───────────────────────────────────────────────────────────────────
+
+const ACCENT_KEY = "quote_calculator_accent";
+
+export const loadAccent = () => localStorage.getItem(ACCENT_KEY) || "green";
+export const saveAccent = (id) => localStorage.setItem(ACCENT_KEY, id);
+
 // ── Business Info ─────────────────────────────────────────────────────────────
 
 const BUSINESS_KEY = 'quote_calculator_business';
@@ -299,6 +310,11 @@ export const saveJobTemplate = (data) => {
     laborHrs: Number(data.laborHrs) || 0,
     laborCost: Number(data.laborCost) || 0,
     parts: data.parts || [],
+    mileageInterval:
+      data.mileageInterval !== "" && data.mileageInterval != null
+        ? Number(data.mileageInterval)
+        : null,
+    quickJob: data.quickJob === true,
     createdAt: Date.now(),
   };
   templates.push(template);
@@ -334,8 +350,12 @@ export const saveLibraryPart = (data) => {
     id: crypto.randomUUID(),
     partNumber: data.partNumber || "",
     name: data.name || "",
+    cost: Number(data.cost) || 0,
     price: Number(data.price) || 0,
+    msrp: Number(data.msrp) || 0,
     description: data.description || "",
+    category: data.category || "",
+    subcategory: data.subcategory || "",
     createdAt: Date.now(),
   };
   parts.push(part);

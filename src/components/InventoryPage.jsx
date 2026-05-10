@@ -2,31 +2,82 @@ import { useState } from 'react';
 import {
   getPartsLibrary, saveLibraryPart, updateLibraryPart, deleteLibraryPart,
 } from '../storage';
+import { CATEGORY_NAMES, getSubcategories } from '../utils/partCategories';
+import { calculateSellPrice } from '../utils/partsMarkup';
 import { CSVLoader } from './CSVLoader';
 
-const EMPTY_FORM = { partNumber: '', name: '', price: '', description: '' };
+const EMPTY_FORM = {
+  partNumber: '', name: '', cost: '', price: '', msrp: '',
+  description: '', category: '', subcategory: '',
+};
 
-function PartForm({ form, onChange, onSave, onCancel }) {
+function PartForm({ form, onChange, onSave, onCancel, markupMatrix }) {
   const set = (field, value) => onChange({ ...form, [field]: value });
+  const subcategories = getSubcategories(form.category);
+
+  const handleCategoryChange = (value) => {
+    onChange({ ...form, category: value, subcategory: '' });
+  };
+
+  const handleCostChange = (value) => {
+    const sell = value && markupMatrix
+      ? calculateSellPrice(Number(value), markupMatrix)
+      : 0;
+    onChange({ ...form, cost: value, price: sell > 0 ? sell.toFixed(2) : '' });
+  };
 
   return (
     <div className="page-form page-card">
-      <div className="lib-form-row two-col">
-        <div className="lib-form-group">
-          <label>Part #</label>
-          <input type="text" placeholder="Part number" value={form.partNumber}
-            onChange={(e) => set('partNumber', e.target.value)} />
-        </div>
-        <div className="lib-form-group">
-          <label>Price ($)</label>
-          <input type="number" step="0.01" placeholder="0.00" value={form.price}
-            onChange={(e) => set('price', e.target.value)} />
-        </div>
-      </div>
       <div className="lib-form-group">
         <label>Name *</label>
         <input type="text" placeholder="Part name" value={form.name}
           onChange={(e) => set('name', e.target.value)} />
+      </div>
+      <div className="lib-form-group">
+        <label>Part #</label>
+        <input type="text" placeholder="Part number" value={form.partNumber}
+          onChange={(e) => set('partNumber', e.target.value)} />
+      </div>
+      <div className="lib-form-row three-col">
+        <div className="lib-form-group">
+          <label>Cost ($)</label>
+          <input type="number" step="0.01" placeholder="0.00" value={form.cost}
+            onChange={(e) => handleCostChange(e.target.value)} />
+        </div>
+        <div className="lib-form-group">
+          <label>Sell Price ($) <span className="lib-label-hint">auto</span></label>
+          <input type="number" step="0.01" placeholder="0.00" value={form.price}
+            onChange={(e) => set('price', e.target.value)} />
+        </div>
+        <div className="lib-form-group">
+          <label>MSRP / List ($)</label>
+          <input type="number" step="0.01" placeholder="0.00" value={form.msrp}
+            onChange={(e) => set('msrp', e.target.value)} />
+        </div>
+      </div>
+      <div className="lib-form-row two-col">
+        <div className="lib-form-group">
+          <label>Category</label>
+          <select value={form.category} onChange={(e) => handleCategoryChange(e.target.value)}>
+            <option value="">— None —</option>
+            {CATEGORY_NAMES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div className="lib-form-group">
+          <label>Subcategory</label>
+          <select
+            value={form.subcategory}
+            onChange={(e) => set('subcategory', e.target.value)}
+            disabled={!form.category}
+          >
+            <option value="">— None —</option>
+            {subcategories.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="lib-form-group">
         <label>Description</label>
@@ -43,7 +94,7 @@ function PartForm({ form, onChange, onSave, onCancel }) {
   );
 }
 
-function InventoryPage({ onToast }) {
+function InventoryPage({ onToast, markupMatrix }) {
   const [parts, setParts] = useState(() => getPartsLibrary());
   const [view, setView] = useState('list');
   const [form, setForm] = useState(EMPTY_FORM);
@@ -60,8 +111,12 @@ function InventoryPage({ onToast }) {
     setForm({
       partNumber: p.partNumber || '',
       name: p.name,
+      cost: p.cost ? p.cost.toString() : '',
       price: p.price?.toString() || '',
+      msrp: p.msrp ? p.msrp.toString() : '',
       description: p.description || '',
+      category: p.category || '',
+      subcategory: p.subcategory || '',
       _editingId: p.id,
     });
     setView({ editing: p });
@@ -72,8 +127,12 @@ function InventoryPage({ onToast }) {
     const data = {
       partNumber: form.partNumber,
       name: form.name.trim(),
+      cost: Number(form.cost) || 0,
       price: Number(form.price) || 0,
+      msrp: Number(form.msrp) || 0,
       description: form.description,
+      category: form.category,
+      subcategory: form.subcategory,
     };
     if (view?.editing) {
       updateLibraryPart(view.editing.id, data);
@@ -98,7 +157,9 @@ function InventoryPage({ onToast }) {
         return (
           p.name.toLowerCase().includes(q) ||
           (p.partNumber || '').toLowerCase().includes(q) ||
-          (p.description || '').toLowerCase().includes(q)
+          (p.description || '').toLowerCase().includes(q) ||
+          (p.category || '').toLowerCase().includes(q) ||
+          (p.subcategory || '').toLowerCase().includes(q)
         );
       })
     : parts;
@@ -120,7 +181,7 @@ function InventoryPage({ onToast }) {
           <div className="page-search">
             <input
               type="text"
-              placeholder="Search by name or part #..."
+              placeholder="Search by name, part #, or category..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -134,10 +195,19 @@ function InventoryPage({ onToast }) {
               filtered.map((p) => (
                 <div key={p.id} className="page-item page-card">
                   <div className="page-item-info">
-                    <strong className="page-item-name">{p.name}</strong>
+                    <div className="page-item-name-row">
+                      <strong className="page-item-name">{p.name}</strong>
+                      {p.category && (
+                        <span className="part-category-badge">
+                          {p.subcategory ? `${p.category} / ${p.subcategory}` : p.category}
+                        </span>
+                      )}
+                    </div>
                     <span className="page-item-meta">
                       {p.partNumber && `#${p.partNumber} · `}
-                      ${Number(p.price).toFixed(2)}
+                      {p.cost > 0 && `Cost $${Number(p.cost).toFixed(2)} · `}
+                      Sell ${Number(p.price).toFixed(2)}
+                      {p.msrp > 0 && ` · List $${Number(p.msrp).toFixed(2)}`}
                     </span>
                     {p.description && (
                       <span className="page-item-desc">{p.description}</span>
@@ -162,6 +232,7 @@ function InventoryPage({ onToast }) {
           onChange={setForm}
           onSave={handleSave}
           onCancel={() => setView('list')}
+          markupMatrix={markupMatrix}
         />
       )}
     </div>

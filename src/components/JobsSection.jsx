@@ -112,6 +112,7 @@ function JobsSection({ jobs, totals, onAddJob, onUpdateJob, onRemoveJob, onSaveA
             onUpdate={onUpdateJob}
             onRemove={onRemoveJob}
             onSaveAsTemplate={onSaveAsTemplate}
+            isBlank={job.parts.length === 0 && !job.laborCost && !job.laborHrs && !job.description}
           />
         ))}
       </div>

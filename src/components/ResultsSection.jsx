@@ -9,7 +9,7 @@ function ResultsSection({ totals }) {
           <div key={s.id} className="job-summary">
             <strong>{s.name}</strong>
             <span>
-              Labor: {fmt(s.laborCost)} ({s.laborHrs.toFixed(1)} hrs) | Parts: {fmt(s.partsTotal)} | SS: {fmt(s.ssTotal)}
+              Labor: {fmt(s.laborCost)} ({s.laborHrs.toFixed(1)} hrs) | Parts: {fmt(s.partsTotal)} | Subtotal: {fmt(s.subtotal)}
             </span>
           </div>
         ))}
