@@ -70,7 +70,7 @@ function TemplateSearch({ onApply, onAddBlank, onClose }) {
   );
 }
 
-function JobsSection({ jobs, totals, onAddJob, onUpdateJob, onRemoveJob, onSaveAsTemplate, onOpenPartPicker, onApplyTemplate }) {
+function JobsSection({ jobs, totals, onAddJob, onUpdateJob, onRemoveJob, onSaveAsTemplate, onApplyTemplate }) {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
 
   const getSubtotal = (jobId) => {
@@ -112,7 +112,6 @@ function JobsSection({ jobs, totals, onAddJob, onUpdateJob, onRemoveJob, onSaveA
             onUpdate={onUpdateJob}
             onRemove={onRemoveJob}
             onSaveAsTemplate={onSaveAsTemplate}
-            onOpenPartPicker={onOpenPartPicker}
           />
         ))}
       </div>

@@ -7,7 +7,6 @@ import NotesSection from "./components/NotesSection";
 import ResultsSection from "./components/ResultsSection";
 import TasksPanel from "./components/TasksPanel";
 import Footer from "./components/Footer";
-import PartPickerModal from "./components/PartPickerModal";
 import TemplatesPage from "./components/TemplatesPage";
 import InventoryPage from "./components/InventoryPage";
 import SettingsPage from "./components/SettingsPage";
@@ -101,9 +100,13 @@ function App() {
     return saved ? saved === "dark" : prefersDark;
   });
   const [modalOpen, setModalOpen] = useState(false);
-  const [partPickerJobId, setPartPickerJobId] = useState(null);
+  const [mobilePanel, setMobilePanel] = useState(null);
+  const [navOpen, setNavOpen] = useState(false);
 
   const { toasts, toast, dismiss } = useToast();
+
+  const toggleMobilePanel = (panel) =>
+    setMobilePanel((prev) => (prev === panel ? null : panel));
 
   useEffect(() => {
     document.documentElement.setAttribute(
@@ -377,51 +380,70 @@ function App() {
     ]);
   };
 
-  const handleAddPartFromInventory = (jobId, part) => {
-    setJobs((prev) =>
-      prev.map((j) =>
-        j.id === jobId ? { ...j, parts: [...j.parts, part] } : j,
-      ),
-    );
-  };
-
   return (
     <div className="app-root">
-      <header>
-        <h1>Quote Calculator</h1>
-      </header>
-      <nav className="main-nav">
-        {NAV_TABS.map((tab) => (
+      <div className={`app-header-wrap${navOpen ? " nav-open" : ""}`}>
+        <header>
+          <h1>Quote Calculator</h1>
           <button
-            key={tab.id}
-            className={`main-nav-tab${activeView === tab.id ? " active" : ""}`}
-            onClick={() => setActiveView(tab.id)}
+            className="nav-hamburger"
+            aria-label="Toggle navigation"
+            aria-expanded={navOpen}
+            onClick={() => setNavOpen((o) => !o)}
           >
-            {tab.icon}
-            {tab.label}
+            <span />
+            <span />
+            <span />
           </button>
-        ))}
-      </nav>
+        </header>
+        <nav className="main-nav">
+          <div className="nav-drawer">
+            {NAV_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                className={`main-nav-tab${activeView === tab.id ? " active" : ""}`}
+                onClick={() => { setActiveView(tab.id); setNavOpen(false); }}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </nav>
+      </div>
       <Modal
         isOpen={modalOpen}
         onCancel={() => setModalOpen(false)}
         onConfirm={handleClearHistory}
       />
-      <PartPickerModal
-        isOpen={partPickerJobId !== null}
-        onClose={() => setPartPickerJobId(null)}
-        onAddPart={(part) => handleAddPartFromInventory(partPickerJobId, part)}
-      />
-      <main>
-        {activeView === "quote" && (
-          <div className="calculator-layout">
-            <HistorySidebar
-              history={history}
-              searchTerm={searchTerm}
-              onSearch={handleSearch}
-              onLoadQuote={handleLoadQuote}
-              onDeleteQuote={handleDeleteHistoryQuote}
-            />
+      <div className="mobile-sidebar-bar">
+        <button
+          className={`mobile-sidebar-btn${mobilePanel === "history" ? " active" : ""}`}
+          onClick={() => toggleMobilePanel("history")}
+        >
+          History
+        </button>
+        <button
+          className={`mobile-sidebar-btn${mobilePanel === "tasks" ? " active" : ""}`}
+          onClick={() => toggleMobilePanel("tasks")}
+        >
+          Tasks
+        </button>
+      </div>
+
+      <div className="app-body">
+        <aside className={`app-sidebar-left${mobilePanel === "history" ? " mobile-open" : ""}`}>
+          <HistorySidebar
+            history={history}
+            searchTerm={searchTerm}
+            onSearch={handleSearch}
+            onLoadQuote={handleLoadQuote}
+            onDeleteQuote={handleDeleteHistoryQuote}
+          />
+        </aside>
+
+        <main>
+          {activeView === "quote" && (
             <div className="calculator-container">
               <QuoteInfo
                 quoteNumber={quoteNumber}
@@ -441,7 +463,6 @@ function App() {
                 onUpdateJob={handleUpdateJob}
                 onRemoveJob={handleRemoveJob}
                 onSaveAsTemplate={handleSaveAsTemplate}
-                onOpenPartPicker={(jobId) => setPartPickerJobId(jobId)}
                 onApplyTemplate={handleApplyTemplate}
               />
               <div className="action-buttons">
@@ -471,31 +492,34 @@ function App() {
               </div>
               <ResultsSection totals={totals} />
             </div>
-            <TasksPanel />
-          </div>
-        )}
-        {activeView === "templates" && (
-          <TemplatesPage
-            onApplyTemplate={handleApplyTemplate}
-            onSwitchToQuote={() => setActiveView("quote")}
-            onToast={toast}
-          />
-        )}
-        {activeView === "inventory" && <InventoryPage onToast={toast} />}
-        {activeView === "customers" && <CustomersPage onToast={toast} />}
-        {activeView === "about" && (<About/>)}
-        {activeView === "settings" && (
-          <SettingsPage
-            rates={rates}
-            onRatesChange={handleRatesChange}
-            businessInfo={businessInfo}
-            onBusinessChange={handleBusinessChange}
-            isDark={isDark}
-            onToggleTheme={() => setIsDark((d) => !d)}
-            onClearHistory={() => setModalOpen(true)}
-          />
-        )}
-      </main>
+          )}
+          {activeView === "templates" && (
+            <TemplatesPage
+              onApplyTemplate={handleApplyTemplate}
+              onSwitchToQuote={() => setActiveView("quote")}
+              onToast={toast}
+            />
+          )}
+          {activeView === "inventory" && <InventoryPage onToast={toast} />}
+          {activeView === "customers" && <CustomersPage onToast={toast} />}
+          {activeView === "about" && <About />}
+          {activeView === "settings" && (
+            <SettingsPage
+              rates={rates}
+              onRatesChange={handleRatesChange}
+              businessInfo={businessInfo}
+              onBusinessChange={handleBusinessChange}
+              isDark={isDark}
+              onToggleTheme={() => setIsDark((d) => !d)}
+              onClearHistory={() => setModalOpen(true)}
+            />
+          )}
+        </main>
+
+        <aside className={`app-sidebar-right${mobilePanel === "tasks" ? " mobile-open" : ""}`}>
+          <TasksPanel />
+        </aside>
+      </div>
       <Footer
         activeView={activeView}
         onSetView={setActiveView}

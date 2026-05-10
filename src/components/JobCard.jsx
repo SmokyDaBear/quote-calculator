@@ -1,4 +1,118 @@
-function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate, onOpenPartPicker }) {
+import { useState, useEffect, useRef } from 'react';
+import { getPartsLibrary } from '../storage';
+
+function searchLibrary(library, term) {
+  if (!term.trim()) return [];
+  const q = term.toLowerCase();
+  return library
+    .filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.partNumber || '').toLowerCase().includes(q)
+    )
+    .slice(0, 7);
+}
+
+function PartRow({ part, idx, library, onUpdate, onReplace, onRemove }) {
+  const [results, setResults] = useState([]);
+  const wrapperRef = useRef(null);
+
+  const search = (term) => setResults(searchLibrary(library, term));
+
+  const handleFieldChange = (field, value) => {
+    onUpdate(idx, field, value);
+    search(value);
+  };
+
+  const handleFocus = (field) => {
+    const term = field === 'partNumber' ? part.partNumber : part.name;
+    if (term.trim()) search(term);
+  };
+
+  const selectPart = (p) => {
+    onReplace(idx, {
+      partNumber: p.partNumber || '',
+      name: p.name,
+      price: p.price.toString(),
+    });
+    setResults([]);
+  };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const extended = (Number(part.price) || 0) * (Number(part.quantity) || 0);
+
+  return (
+    <div className="part-row-wrapper" ref={wrapperRef}>
+      <div className="part-row">
+        <input
+          type="text"
+          placeholder="Part #"
+          value={part.partNumber}
+          autoComplete="off"
+          onChange={(e) => handleFieldChange('partNumber', e.target.value)}
+          onFocus={() => handleFocus('partNumber')}
+        />
+        <input
+          type="text"
+          placeholder="Name"
+          value={part.name}
+          autoComplete="off"
+          onChange={(e) => handleFieldChange('name', e.target.value)}
+          onFocus={() => handleFocus('name')}
+        />
+        <input
+          type="number"
+          step="0.01"
+          placeholder="0.00"
+          value={part.price}
+          onChange={(e) => onUpdate(idx, 'price', e.target.value)}
+        />
+        <input
+          type="number"
+          step="1"
+          min="1"
+          placeholder="1"
+          value={part.quantity}
+          onChange={(e) => onUpdate(idx, 'quantity', e.target.value)}
+        />
+        <span className="part-extended">${extended.toFixed(2)}</span>
+        <button type="button" className="btn-remove" onClick={() => onRemove(idx)}>
+          ×
+        </button>
+      </div>
+      {results.length > 0 && (
+        <div className="part-autocomplete-dropdown">
+          {results.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              className="part-autocomplete-item"
+              onMouseDown={() => selectPart(p)}
+            >
+              <span className="part-autocomplete-name">{p.name}</span>
+              <span className="part-autocomplete-meta">
+                {p.partNumber ? `#${p.partNumber} · ` : ''}${Number(p.price).toFixed(2)}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate }) {
+  const [library, setLibrary] = useState(() => getPartsLibrary());
+
   const addPart = () => {
     onUpdate(job.id, 'parts', [
       ...job.parts,
@@ -11,6 +125,14 @@ function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate, onOpenPa
       job.id,
       'parts',
       job.parts.map((p, i) => (i === idx ? { ...p, [field]: value } : p))
+    );
+  };
+
+  const replacePart = (idx, data) => {
+    onUpdate(
+      job.id,
+      'parts',
+      job.parts.map((p, i) => (i === idx ? { ...p, ...data } : p))
     );
   };
 
@@ -63,14 +185,9 @@ function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate, onOpenPa
       <div className="parts-section">
         <div className="parts-section-header">
           <span className="parts-section-label">Parts</span>
-          <div className="parts-header-actions">
-            <button type="button" className="btn-small btn-secondary" onClick={() => onOpenPartPicker(job.id)}>
-              From Library
-            </button>
-            <button type="button" className="btn-small" onClick={addPart}>
-              + Add Part
-            </button>
-          </div>
+          <button type="button" className="btn-small" onClick={addPart}>
+            + Add Part
+          </button>
         </div>
         {job.parts.length > 0 && (
           <>
@@ -82,48 +199,17 @@ function JobCard({ job, subtotal, onUpdate, onRemove, onSaveAsTemplate, onOpenPa
               <span>Extended</span>
               <span />
             </div>
-            {job.parts.map((part, idx) => {
-              const extended = (Number(part.price) || 0) * (Number(part.quantity) || 0);
-              return (
-                <div key={idx} className="part-row">
-                  <input
-                    type="text"
-                    placeholder="Part #"
-                    value={part.partNumber}
-                    onChange={(e) => updatePart(idx, 'partNumber', e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Name"
-                    value={part.name}
-                    onChange={(e) => updatePart(idx, 'name', e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={part.price}
-                    onChange={(e) => updatePart(idx, 'price', e.target.value)}
-                  />
-                  <input
-                    type="number"
-                    step="1"
-                    min="1"
-                    placeholder="1"
-                    value={part.quantity}
-                    onChange={(e) => updatePart(idx, 'quantity', e.target.value)}
-                  />
-                  <span className="part-extended">${extended.toFixed(2)}</span>
-                  <button
-                    type="button"
-                    className="btn-remove"
-                    onClick={() => removePart(idx)}
-                  >
-                    ×
-                  </button>
-                </div>
-              );
-            })}
+            {job.parts.map((part, idx) => (
+              <PartRow
+                key={idx}
+                part={part}
+                idx={idx}
+                library={library}
+                onUpdate={updatePart}
+                onReplace={replacePart}
+                onRemove={removePart}
+              />
+            ))}
             <div className="parts-total-row">
               Parts Total: ${partsTotal.toFixed(2)}
             </div>
