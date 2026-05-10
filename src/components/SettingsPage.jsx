@@ -125,7 +125,9 @@ function SettingsPage({
               type="tel"
               placeholder="Business phone"
               value={businessInfo.phone}
-              onChange={(e) => setBiz("phone", formatPhoneInput(e.target.value))}
+              onChange={(e) =>
+                setBiz("phone", formatPhoneInput(e.target.value))
+              }
             />
           </div>
           <div className="lib-form-group">
@@ -135,6 +137,18 @@ function SettingsPage({
               placeholder="Street, City, State ZIP"
               value={businessInfo.address}
               onChange={(e) => setBiz("address", e.target.value)}
+            />
+          </div>
+          <div className="lib-form-group">
+            <label>Print Message</label>
+            <textarea
+              className="lib-textarea"
+              placeholder={`e.g. "Thank you for choosing ${businessInfo.name || "our shop"}! We appreciate your business."`}
+              value={
+                businessInfo?.printMessage ||
+                `Thank you for choosing ${businessInfo.name || "our shop"}! We appreciate your business.`
+              }
+              onChange={(e) => setBiz("printMessage", e.target.value)}
             />
           </div>
         </div>

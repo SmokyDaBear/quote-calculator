@@ -269,8 +269,9 @@ export const deleteCustomerVehicle = (customerId, vehicleId) => {
 const BUSINESS_KEY = 'quote_calculator_business';
 
 export const loadBusinessInfo = () => {
+  const defaults = { name: '', address: '', phone: '', logo: '', printMessage: '' };
   const data = localStorage.getItem(BUSINESS_KEY);
-  return data ? JSON.parse(data) : { name: '', address: '', phone: '', logo: '' };
+  return data ? { ...defaults, ...JSON.parse(data) } : defaults;
 };
 
 export const saveBusinessInfo = (info) => {

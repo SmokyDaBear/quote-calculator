@@ -5,6 +5,7 @@ import QuoteInfo from "./components/QuoteInfo";
 import JobsSection from "./components/JobsSection";
 import NotesSection from "./components/NotesSection";
 import ResultsSection from "./components/ResultsSection";
+import DiscountSection from "./components/DiscountSection";
 import TasksPanel from "./components/TasksPanel";
 import Footer from "./components/Footer";
 import TemplatesPage from "./components/TemplatesPage";
@@ -102,6 +103,7 @@ function App() {
   const [modalOpen, setModalOpen] = useState(false);
   const [mobilePanel, setMobilePanel] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
+  const [discount, setDiscount] = useState({ type: "percentage", value: "", appliesTo: "both" });
 
   const { toasts, toast, dismiss } = useToast();
 
@@ -152,8 +154,22 @@ function App() {
 
     const taxableAmount = grandPartsTotal + grandSsTotal;
     const taxTotal = taxableAmount * (rates.taxRate * 0.01);
+
+    const discountValue = Number(discount.value) || 0;
+    let discountAmount = 0;
+    if (discountValue > 0) {
+      const base =
+        discount.appliesTo === "parts" ? grandPartsTotal
+        : discount.appliesTo === "labor" ? grandLaborCost
+        : grandLaborCost + grandPartsTotal;
+      discountAmount =
+        discount.type === "percentage"
+          ? base * (discountValue / 100)
+          : Math.min(discountValue, base);
+    }
+
     const grandTotal =
-      grandLaborCost + grandPartsTotal + grandSsTotal + taxTotal;
+      grandLaborCost + grandPartsTotal + grandSsTotal + taxTotal - discountAmount;
 
     return {
       jobSummaries,
@@ -162,9 +178,11 @@ function App() {
       partsTotal: grandPartsTotal,
       ssTotal: grandSsTotal,
       taxTotal,
+      discountAmount,
+      discount,
       grandTotal,
     };
-  }, [jobs, rates]);
+  }, [jobs, rates, discount]);
 
   const refreshHistory = () => {
     const h = getHistoryIndex();
@@ -214,6 +232,8 @@ function App() {
     mileage: "",
   };
 
+  const EMPTY_DISCOUNT = { type: "percentage", value: "", appliesTo: "both" };
+
   const handleNewQuote = () => {
     setCurrentQuoteId(null);
     setQuoteNumber(getCurrentQuoteNumber());
@@ -225,6 +245,7 @@ function App() {
     setRates(loadGlobalRates());
     setJobCounter(1);
     setJobs([EMPTY_JOB(1)]);
+    setDiscount(EMPTY_DISCOUNT);
   };
 
   const buildQuoteData = () => ({
@@ -234,6 +255,7 @@ function App() {
     notes,
     vehicle,
     rates,
+    discount,
     jobs: jobs.map((j) => ({
       name: j.name,
       parts: j.parts.map((p) => ({
@@ -286,6 +308,7 @@ function App() {
     setNotes(quote.notes || "");
     setVehicle(quote.vehicle || EMPTY_VEHICLE);
     if (quote.rates) setRates(quote.rates);
+    setDiscount(quote.discount || EMPTY_DISCOUNT);
     if (quote.jobs && quote.jobs.length > 0) {
       const loaded = quote.jobs.map((jobData, i) => ({
         id: i + 1,
@@ -339,6 +362,7 @@ function App() {
       jobs,
       rates,
       totals,
+      discount,
       businessInfo,
     });
   };
@@ -465,6 +489,7 @@ function App() {
                 onSaveAsTemplate={handleSaveAsTemplate}
                 onApplyTemplate={handleApplyTemplate}
               />
+              <DiscountSection discount={discount} onChange={setDiscount} />
               <div className="action-buttons">
                 <button
                   type="button"

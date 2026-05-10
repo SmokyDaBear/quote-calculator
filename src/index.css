@@ -502,6 +502,7 @@ main {
 /* Section Styling */
 .rates-section,
 .jobs-section,
+.discount-section,
 .results-section {
   background: var(--card-bg);
   border-radius: 10px;
@@ -514,6 +515,7 @@ main {
 
 .rates-section h3,
 .jobs-section h3,
+.discount-section h3,
 .results-section h3 {
   margin: 0 0 1em 0;
   color: var(--text-primary);
@@ -529,6 +531,94 @@ main {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 1em;
+}
+
+/* ── Discount Section ───────────────────────────────────────────────────── */
+.discount-header {
+  margin-bottom: 0.85em;
+}
+
+.discount-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.discount-toggle-group {
+  display: flex;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.discount-toggle-btn {
+  padding: 0.4em 0.85em;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  box-shadow: none;
+}
+
+.discount-toggle-btn:last-child {
+  border-right: none;
+}
+
+.discount-toggle-btn:hover {
+  background: var(--opacity);
+  color: var(--text-primary);
+  box-shadow: none;
+}
+
+.discount-toggle-btn.active {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.discount-toggle-btn.active:hover {
+  background: var(--accent-hover);
+  box-shadow: none;
+}
+
+.discount-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--input-bg);
+}
+
+.discount-prefix,
+.discount-suffix {
+  padding: 0 0.5em;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  background: var(--opacity);
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+
+.discount-input {
+  width: 80px;
+  border: none;
+  background: transparent;
+  padding: 0.45em 0.5em;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  outline: none;
+  box-shadow: none;
+}
+
+.discount-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
 /* Jobs Section */
@@ -583,7 +673,7 @@ main {
   padding: 0.3em;
   border-bottom: 2px solid transparent;
   transition: border-color 0.15s ease;
-  width: auto;
+  width: min(300px,100%);
 }
 
 .job-name:focus {
@@ -868,6 +958,15 @@ button[disabled] {
 
 .total-row:last-child {
   border-bottom: none;
+}
+
+.discount-row {
+  color: #c0392b;
+  font-weight: 500;
+}
+
+[data-theme="dark"] .discount-row {
+  color: #e07070;
 }
 
 .grand-total {

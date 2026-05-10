@@ -35,6 +35,18 @@ function ResultsSection({ totals }) {
           <span>Total Tax:</span>
           <span>{fmt(totals.taxTotal)}</span>
         </div>
+        {totals.discountAmount > 0 && (
+          <div className="total-row discount-row">
+            <span>
+              Discount
+              {totals.discount?.type === "percentage"
+                ? ` (${totals.discount.value}% on ${totals.discount.appliesTo})`
+                : ` (on ${totals.discount?.appliesTo})`}
+              :
+            </span>
+            <span>−{fmt(totals.discountAmount)}</span>
+          </div>
+        )}
         <div className="total-row grand-total">
           <span>Grand Total:</span>
           <span>{fmt(totals.grandTotal)}</span>
