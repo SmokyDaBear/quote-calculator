@@ -19,10 +19,12 @@
   --history-item-bg: #ffffff;
   --job-card-bg: #ffffff;
   --modal-overlay: rgba(0, 0, 0, 0.45);
+  --border: rgba(61, 63, 66, 0.3);
 }
 
 /* Dark Theme */
 [data-theme="dark"] {
+  --border: rgba(255, 255, 255, 0.1);
   --accent: #3ab87e;
   --accent-hover: #4dd49a;
   --accent-text: #ffffff;
@@ -47,6 +49,15 @@
 
 [data-theme="dark"] header {
   background-color: #1f2d3d;
+}
+
+[data-theme="dark"] select {
+  color-scheme: dark;
+}
+
+[data-theme="dark"] select option {
+  background-color: #252d36;
+  color: #dce3ec;
 }
 
 [data-theme="dark"] .job-name {
@@ -352,7 +363,7 @@ main {
   .quote-actions {
     position: sticky;
     bottom: 48px; /* fixed header (~58px) + tab nav (~44px) */
-    z-index: 1;
+    z-index: 2;
     align-self: flex-end;
     background: var(--card-bg);
     padding: 0.75em 1em;
@@ -876,6 +887,11 @@ select:focus {
   position: relative;
 }
 
+.form-group--checkbox {
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
 .form-group label {
   position: absolute;
   top: -0.75em;
@@ -896,6 +912,12 @@ select:focus {
   background-color: var(--accent);
   color: var(--accent-text);
   transform: translateY(-10px) scale(1.02);
+}
+.form-group.form-group--checkbox:focus-within label,
+.form-group.form-group--checkbox:hover label {
+  background-color: var(--opacity);
+  color: var(--text-secondary);
+  transform: translateY(0) scale(1);
 }
 
 /* Action Buttons */
@@ -1115,12 +1137,82 @@ button[disabled] {
   color: var(--text-secondary);
 }
 
+/* ── HorizontalScrollContainer ───────────────────────────────────────────────── */
+
+.h-scroll-wrap {
+  position: relative;
+}
+
+.h-scroll-wrap.h-scroll-wrap--hide-scrollbar .scroll-track {
+  --webkit-scrollbar-width: none;
+  scrollbar-width: none;
+  --webkit-scrollbar: none;
+  --webkit-scrollbar-color: transparent transparent;
+  scrollbar-color: transparent transparent;
+}
+
+.h-scroll-btn {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 36px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-size: 1.4rem;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.h-scroll-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.h-scroll-btn:hover {
+  color: var(--text-primary);
+}
+
+.h-scroll-btn:hover::before {
+  opacity: 1;
+  z-index: -1;
+}
+.h-scroll-btn--left {
+  left: 0;
+  background: linear-gradient(to right, var(--card-bg) 55%, transparent);
+}
+
+.h-scroll-btn--left::before {
+  background: linear-gradient(to right, var(--accent) 55%, var(--accent-hover));
+  border-radius: 6px;
+}
+
+.h-scroll-btn--right {
+  right: 0;
+  background: linear-gradient(to left, var(--card-bg) 55%, transparent);
+}
+
+.h-scroll-btn--right::before {
+  background: linear-gradient(to left, var(--accent) 55%, var(--accent-hover));
+  border-radius: 6px;
+}
+
 .service-rec-scroll {
   display: flex;
   gap: 0.75rem;
   overflow-x: auto;
   padding-bottom: 4px;
+  --webkit-scrollbar-width: thin;
   scrollbar-width: thin;
+  scroll-snap-type: x mandatory;
 }
 
 .service-rec-scroll::-webkit-scrollbar {
@@ -1146,6 +1238,7 @@ button[disabled] {
   flex-direction: column;
   gap: 0.35rem;
   background: var(--bg);
+  scroll-snap-align: center;
 }
 
 .service-rec-tag {
@@ -1391,7 +1484,9 @@ button[disabled] {
   border-radius: 6px;
   background: var(--card-bg);
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
   width: 100%;
 }
 
@@ -2543,6 +2638,72 @@ button[disabled] {
   margin-top: 0.1rem;
 }
 
+/* ── Templates filter bar, pagination & category tag ──────────────────────── */
+
+.templates-filter-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.templates-filter-bar input[type="search"] {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
+  padding: 0.45em 0.75em;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.88em;
+  box-sizing: border-box;
+}
+
+.templates-filter-bar select {
+  flex: 0 0 160px;
+  width: 160px;
+  padding: 0.45em 0.65em;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.88em;
+  box-sizing: border-box;
+}
+
+.templates-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.5rem;
+}
+
+.templates-pagination-info {
+  font-size: 0.82em;
+  color: var(--text-secondary);
+}
+
+.templates-pagination-count {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.template-category-tag {
+  display: inline-block;
+  padding: 0.15em 0.55em;
+  border-radius: 4px;
+  font-size: 0.72em;
+  font-weight: 600;
+  background: var(--accent-ring);
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* ── Jobs header actions ───────────────────────────────────────────────────── */
 
 .jobs-header-actions {
@@ -2885,6 +3046,15 @@ button[disabled] {
   flex-direction: column;
 }
 
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
 .app-body {
   flex: 1;
 }
@@ -3122,7 +3292,9 @@ button[disabled] {
   outline: 2px solid transparent;
   outline-offset: 2px;
   cursor: pointer;
-  transition: outline-color 0.15s ease, transform 0.15s ease;
+  transition:
+    outline-color 0.15s ease,
+    transform 0.15s ease;
   padding: 0;
   flex-shrink: 0;
 }
@@ -3220,6 +3392,141 @@ button[disabled] {
   box-shadow: none;
 }
 
+/* ── Wipe Modal ────────────────────────────────────────────────────────────── */
+
+.wipe-modal {
+  max-width: 440px;
+}
+
+.wipe-export-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1.5rem;
+}
+
+.wipe-export-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.wipe-exported {
+  color: var(--success) !important;
+  border-color: var(--success) !important;
+}
+
+/* ── Welcome Modal ─────────────────────────────────────────────────────────── */
+
+.welcome-overlay {
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.welcome-modal {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 2.5rem 2rem 1.75rem;
+  width: min(480px, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  animation: welcome-in 0.25s ease;
+}
+
+@keyframes welcome-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.welcome-slide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+  min-height: 220px;
+}
+
+.welcome-slide-icon {
+  width: 56px;
+  height: 56px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.welcome-slide-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.welcome-slide-body {
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0;
+  max-width: 380px;
+}
+
+.welcome-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: var(--accent-ring);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  text-align: left;
+  margin-top: 0.25rem;
+}
+
+.welcome-note-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--accent);
+  margin-top: 1px;
+}
+
+.welcome-dots {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.welcome-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.welcome-dot--active {
+  background: var(--accent);
+  transform: scale(1.25);
+}
+
+.welcome-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  width: 100%;
+}
+
 /* ── About Page ────────────────────────────────────────────────────────────── */
 
 .about-feature-list,
@@ -3269,6 +3576,10 @@ button[disabled] {
 
 .about-privacy-card {
   margin-top: 1rem;
+}
+
+.about-api-link {
+  margin-top: 0.75rem;
 }
 
 .about-privacy-list li code {
@@ -3327,6 +3638,83 @@ button[disabled] {
 .customer-detail-phone {
   font-size: 0.88rem;
   color: var(--text-secondary);
+}
+
+.customer-detail-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.1rem;
+}
+
+.customer-detail-contact {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 0.35rem;
+}
+
+.customer-detail-contact-label {
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 52px;
+}
+
+.customer-detail-notes {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-top: 0.35rem;
+  white-space: pre-wrap;
+  font-style: italic;
+}
+
+/* ── Customer phone multi-entry ──────────────────────────────────────────────── */
+
+.customer-phones-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.customer-phones-header label {
+  margin-bottom: 0;
+}
+
+.customer-phone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.customer-phone-row {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.customer-phone-label-input {
+  width: 90px;
+  flex-shrink: 0;
+  padding: 0.45em 0.6em;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.85em;
+  box-sizing: border-box;
+}
+
+.customer-phone-number-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45em 0.6em;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.85em;
+  box-sizing: border-box;
 }
 
 .customer-vehicles-subheader {
@@ -3993,11 +4381,6 @@ button[disabled] {
 }
 
 /* ── Price at List (JobCard) ─────────────────────────────────────────────── */
-
-.form-group--checkbox {
-  justify-content: flex-end;
-  align-items: flex-end;
-}
 
 .price-at-list-label {
   display: flex;

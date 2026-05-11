@@ -1,17 +1,19 @@
-name,partNumber,price,description
-Oil Filter,MGL10290,10.66,Microguard
-Oil Filter,MSL10290,14.16,Microguard Select
-5W30 Full Synthetic Mobile 1,1-5-30CLN,15.28,1 QUART FS Mobile 1 Advanced Clean 5W30
-Coolant Universal Gallon,87221,16.86,Yellow Universal Coolant
-BG Coolant Kit,BGCOOLANT,51.26,BG Coolant Kit
-DOT 3 Brake Fluid,72120,9.86,O'Reilly Dot 3 Brake Fluid 1 qt
-DOT 4 Brake Fluid,22078,21.48,Liqui Moly 33.8 Ounce Dot 4 Brake Fluid
-Brake Pad (Acura Integra 05-09),DL15345,44.59,
-Brake Rotor,DL54123,104.59,
-Spark Plug Bosch EVO,8508,15.11,Spark plug
-Intake Gasket,1262R1,32.51,Fel-Pro HP Intake Manifold Gasket Kit
-BG Frigifresh,BGFRID,24.95,BG Frigi-Fresh hospital grade disinfectanct aerosol.
-Cabin Air Filter,4062HP,39.19,Cabin Air filter
-Engine Air Filter,MGA10414,31.17,MicroGuard Panel Air Filter
-Air Filter,MSA71063,36.63,MicroGuard Select Panel Air Filter
-BG Transmission Service Kit,BGTRANS,45.31,BG Transmission Kit w/ flush and conditioner
+id,name,partNumber,cost,price,msrp,category,subcategory,description
+28aea68d-7989-48c4-8e4f-67760af6015d,0W20 FS Quart,1-0-20FS,8.54,15.19,13.49,Lubricants,Synthetic Oil,1 QUART Full Synthetic 0W20
+a5ba0919-ad41-474a-b318-49263baa922c,5W20 FS Quart,1-5-20FS,8.54,15.19,13.49,Lubricants,Synthetic Oil,1 QUART Full Synthetic 5W20
+440996c2-f968-4dbd-8b6a-1e1acd0d0d08,5W30 FS Quart,1-5-30FS,8.59,15.28,13.49,Lubricants,Synthetic Oil,1 QUART Full Synthetic 5W30
+481fd2df-1286-48f5-a135-60d6cb76c840,Air Filter,AFP1,22.59,36.63,26.99,Filters,Engine Air Filter,Premium Panel Air Filter
+db2cf3ae-68ae-4dd7-9c33-7d3df97818bd,BG Coolant Kit,BGCOOLANT,32.59,51.26,39.99,Misc,Chemicals,BG Coolant Kit
+c8879a1d-c0b8-41ad-90a2-98d1943fd438,BG Frigifresh,BGFRID,15.95,24.95,24.95,Misc,Chemicals,BG Frigi-Fresh hospital grade disinfectanct aerosol.
+f20ed019-ddea-4988-9151-e6bc94ac994e,BG Transmission Service Kit,BGTRANS,28.49,45.31,39.99,Misc,Chemicals,BG Transmission Kit w/ flush and conditioner
+6fc5a9b9-4281-4287-96f6-eb6a55796a02,Brake Pad,BRKPD1,0,44.59,0,Brakes,Brake Pads,Universal Brake Pad
+2d5c156d-a7dd-4d9a-a090-1836ebc9cb97,Brake Rotor,BRKRTR1,0,104.59,0,Brakes,Brake Rotors,Universal Brake Rotor
+d97411d5-ada5-45d6-b973-2dbb6d8e8852,Cabin Air Filter,CAF1,24.29,39.19,27.99,Filters,Cabin Air Filter,Cabin Air filter
+f27525b0-4c42-4c8e-8fc1-735e121a4aa1,Coolant Universal Gallon,COOLANT1,9.49,16.86,11.99,Lubricants,Coolant / Antifreeze,Yellow Universal Coolant
+adda6d77-0d88-4297-bc21-952b371a2642,DOT 3 Brake Fluid,BRKFLDDOT3,5.49,9.86,7.99,Lubricants,Brake Fluid,Dot 3 Brake Fluid 1 qt
+96d3418a-2521-438c-878d-71e9be315a7a,DOT 4 Brake Fluid,BRKFLDDOT4,12.49,21.48,17.99,Lubricants,Brake Fluid,Dot 4 Brake Fluid 1 qt
+d65a847f-7d95-4646-9e93-9a994231e12e,Engine Air Filter,AF1,18.95,31.17,23.99,Filters,Engine Air Filter,Panel Air Filter
+5e8adbf1-4b7b-49d4-a516-d53c01082a8e,Intake Gasket,INTKGSKT1,19.84,32.51,24.99,Engine,Gaskets & Seals,Fel-Pro HP Intake Manifold Gasket Kit
+31f1fefb-dabe-4e47-85d8-0b848ed00010,Oil Filter,OF2,7.95,14.16,11.99,Filters,Oil Filter,Oil Filter
+56abe764-0570-4e58-b692-f6e543c8aebf,Oil Filter,OF1,5.95,10.66,7.99,Filters,Oil Filter,Oil Filter
+fbd6a6d5-e8a8-413c-aa9a-58b4e174b5eb,Spark Plug,SPRKPLG1,8.49,15.11,12.99,Engine,Spark Plugs,Spark plug
