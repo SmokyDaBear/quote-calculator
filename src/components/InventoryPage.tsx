@@ -10,7 +10,7 @@ import { CATEGORY_NAMES, getSubcategories } from "../utils/partCategories";
 import { calculateSellPrice } from "../utils/partsMarkup";
 import { CSVLoader } from "./CSVLoader";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 
 const EMPTY_FORM = {
   partNumber: "",

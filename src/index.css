@@ -939,6 +939,7 @@ select:focus {
   border-radius: 4px;
   font-size: 0.8em;
   font-weight: 600;
+  z-index: 1;
   color: var(--text-secondary);
 }
 
@@ -2927,10 +2928,17 @@ button[disabled] {
   color: var(--accent-text);
 }
 
+.vehicle-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75em;
+}
+
 .vehicle-section h3 {
   font-size: 0.88em;
   font-weight: 700;
-  margin-bottom: 0.75em;
+  margin-bottom: 0;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;

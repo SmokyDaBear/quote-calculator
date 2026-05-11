@@ -243,6 +243,10 @@ export async function searchCustomers(term: string): Promise<Customer[]> {
 
 // ── Vehicles ──────────────────────────────────────────────────────────────────
 
+export async function getAllVehicles(): Promise<Vehicle[]> {
+  return dbGetAll<Vehicle>('vehicles');
+}
+
 export async function getCustomerVehicles(customerId: string): Promise<Vehicle[]> {
   const all = await dbGetAll<Vehicle>('vehicles');
   return all.filter((v) => v.customerId === customerId);

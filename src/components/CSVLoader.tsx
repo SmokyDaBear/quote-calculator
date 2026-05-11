@@ -6,6 +6,7 @@ import {
   getJobTemplates,
   saveCustomer,
   getCustomers,
+  getAllVehicles,
 } from "../storage";
 
 type CsvField = {
@@ -185,8 +186,11 @@ export function parseCSV(text: string): {
   return { headers, rows };
 }
 
-export function toCSV(rows: Record<string, unknown>[], fields: CsvField[]): string {
-  const headers = fields.map((f) => f.key);
+export function objectsToCSV(rows: Record<string, unknown>[]): string {
+  if (rows.length === 0) return "";
+  const keySet = new Set<string>();
+  for (const row of rows) for (const k of Object.keys(row)) keySet.add(k);
+  const headers = [...keySet];
   const escape = (val: unknown): string => {
     const s =
       val !== null && typeof val === "object" ?
@@ -213,18 +217,42 @@ export function downloadCSV(filename: string, content: string): void {
 }
 
 export async function exportAllDataCSV(): Promise<void> {
-  const [parts, templates, customers] = await Promise.all([
+  const [parts, templates, customers, vehicles] = await Promise.all([
     getPartsLibrary(),
     getJobTemplates(),
     getCustomers(),
+    getAllVehicles(),
   ]);
-  downloadCSV('inventory.csv', toCSV(parts as unknown as Record<string, unknown>[], PART_FIELDS));
-  downloadCSV('templates.csv', toCSV(templates as unknown as Record<string, unknown>[], TEMPLATE_FIELDS));
+  downloadCSV('inventory.csv', objectsToCSV(parts as unknown as Record<string, unknown>[]));
+  downloadCSV('templates.csv', objectsToCSV(templates as unknown as Record<string, unknown>[]));
   downloadCSV(
     'customers.csv',
-    toCSV(
-      customers.map((c) => ({ ...c, phone: c.phones?.[0]?.number || '' })),
-      CUSTOMER_FIELDS,
+    objectsToCSV(
+      customers.map((c) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phones?.[0]?.number || '',
+        email: c.email || '',
+        address: c.address || '',
+        notes: c.notes || '',
+      })),
+    ),
+  );
+  downloadCSV(
+    'vehicles.csv',
+    objectsToCSV(
+      vehicles.map((v) => ({
+        id: v.id,
+        customerId: v.customerId,
+        year: v.year,
+        make: v.make,
+        model: v.model,
+        trim: v.trim,
+        vin: v.vin,
+        mileage: v.mileage,
+        color: v.color,
+        notes: v.notes,
+      })),
     ),
   );
 }
@@ -234,7 +262,7 @@ export function CSVLoader({
   onRefresh,
   onToast,
 }: {
-  type?: "parts" | "templates" | "customers";
+  type?: "parts" | "templates" | "customers" | "vehicles";
   onRefresh?: () => void;
   onToast?: (msg: string, type?: string) => void;
 }) {
@@ -366,28 +394,37 @@ export function CSVLoader({
   const handleDownload = async () => {
     if (type === "customers") {
       const rows = (await getCustomers()).map((c) => ({
+        id: c.id,
         name: c.name,
         phone: c.phones?.[0]?.number || "",
         email: c.email || "",
         address: c.address || "",
         notes: c.notes || "",
       }));
-      downloadCSV("customers.csv", toCSV(rows, CUSTOMER_FIELDS));
+      downloadCSV("customers.csv", objectsToCSV(rows));
+    } else if (type === "vehicles") {
+      const rows = (await getAllVehicles()).map((v) => ({
+        id: v.id,
+        customerId: v.customerId,
+        year: v.year,
+        make: v.make,
+        model: v.model,
+        trim: v.trim,
+        vin: v.vin,
+        mileage: v.mileage,
+        color: v.color,
+        notes: v.notes,
+      }));
+      downloadCSV("vehicles.csv", objectsToCSV(rows));
     } else if (type === "parts") {
       downloadCSV(
         "inventory.csv",
-        toCSV(
-          (await getPartsLibrary()) as unknown as Record<string, unknown>[],
-          PART_FIELDS,
-        ),
+        objectsToCSV((await getPartsLibrary()) as unknown as Record<string, unknown>[]),
       );
     } else {
       downloadCSV(
         "templates.csv",
-        toCSV(
-          (await getJobTemplates()) as unknown as Record<string, unknown>[],
-          TEMPLATE_FIELDS,
-        ),
+        objectsToCSV((await getJobTemplates()) as unknown as Record<string, unknown>[]),
       );
     }
   };

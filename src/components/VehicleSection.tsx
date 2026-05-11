@@ -46,6 +46,15 @@ type DecodeResult = {
   warning: string;
 };
 
+export type VehicleFields = {
+  year: string;
+  make: string;
+  model: string;
+  trim: string;
+  vin: string;
+  mileage: string;
+};
+
 function DecodeDialog({
   result,
   onClose,
@@ -91,124 +100,14 @@ function DecodeDialog({
   );
 }
 
-type VehicleFields = {
-  year: string;
-  make: string;
-  model: string;
-  trim: string;
-  vin: string;
-  mileage: string;
-};
+// ── Shared vehicle form fields with API dropdowns + VIN decode ─────────────────
 
-function vehicleLabel(v: Partial<Vehicle>) {
-  const parts = [v.year, v.make, v.model, v.trim].filter(Boolean);
-  return parts.length ? parts.join(" ") : "Unknown Vehicle";
-}
-
-function VehiclePickerStrip({
-  customerId,
+export function VehicleFormFields({
   vehicle,
   onChange,
 }: {
-  customerId: string;
   vehicle: VehicleFields;
   onChange: (v: VehicleFields) => void;
-}) {
-  const [saved, setSaved] = useState<Vehicle[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  const refresh = () => getCustomerVehicles(customerId).then(setSaved);
-
-  useEffect(() => {
-    refresh();
-    setSelectedId(null);
-  }, [customerId]);
-
-  const handleSelect = (v: Vehicle) => {
-    onChange({
-      year: v.year,
-      make: v.make,
-      model: v.model,
-      trim: v.trim,
-      vin: v.vin,
-      mileage: v.mileage,
-    });
-    setSelectedId(v.id);
-  };
-
-  const handleDelete = async (e: React.MouseEvent, v: Vehicle) => {
-    e.stopPropagation();
-    if (!window.confirm(`Delete "${vehicleLabel(v)}"?`)) return;
-    await deleteCustomerVehicle(customerId, v.id);
-    if (selectedId === v.id) setSelectedId(null);
-    refresh();
-  };
-
-  const handleSave = async () => {
-    const hasData = vehicle.year || vehicle.make || vehicle.model;
-    if (!hasData) return;
-    if (selectedId) {
-      await updateCustomerVehicle(customerId, selectedId, vehicle);
-    } else {
-      const created = await saveCustomerVehicle(customerId, {
-        ...vehicle,
-        color: "",
-        notes: "",
-      });
-      setSelectedId(created.id);
-    }
-    refresh();
-  };
-
-  return (
-    <div className="vehicle-picker">
-      <div className="vehicle-picker-header">
-        <span className="vehicle-picker-label">Saved Vehicles</span>
-        <button
-          type="button"
-          className="btn-small btn-secondary"
-          onClick={handleSave}
-          disabled={!vehicle.year && !vehicle.make && !vehicle.model}
-        >
-          {selectedId ? "Update Vehicle" : "Save Vehicle"}
-        </button>
-      </div>
-      {saved.length === 0 ?
-        <span className="vehicle-picker-empty">
-          No vehicles saved — fill in the form below and click Save Vehicle.
-        </span>
-      : <div className="vehicle-picker-chips">
-          {saved.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              className={`vehicle-chip${selectedId === v.id ? " selected" : ""}`}
-              onClick={() => handleSelect(v)}
-            >
-              <span>{vehicleLabel(v)}</span>
-              <span
-                className="vehicle-chip-delete"
-                role="button"
-                onClick={(e) => handleDelete(e, v)}
-              >
-                ×
-              </span>
-            </button>
-          ))}
-        </div>
-      }
-    </div>
-  );
-}
-
-function VehicleSection({
-  vehicle,
-  onChange,
-  customerId,
-}: {
-  vehicle: VehicleFields;
-  onChange: (v: VehicleFields) => void;
-  customerId: string | null;
 }) {
   const [rawMakes, setRawMakes] = useState<MakesCache>(_makesCache);
   const [rawModels, setRawModels] = useState<ModelResponse[] | null>(null);
@@ -216,7 +115,6 @@ function VehicleSection({
   const [decodeError, setDecodeError] = useState("");
   const [decodeResult, setDecodeResult] = useState<DecodeResult | null>(null);
 
-  // Load makes once when a year is first selected
   useEffect(() => {
     if (!vehicle.year) return;
     if (_makesCache !== null) return;
@@ -231,7 +129,6 @@ function VehicleSection({
       });
   }, [vehicle.year]);
 
-  // Load models whenever year+make both change
   useEffect(() => {
     if (!vehicle.make || !vehicle.year) {
       setRawModels(null);
@@ -331,12 +228,7 @@ function VehicleSection({
           <option value={vehicle.make}>{vehicle.make}</option>
         )}
         {makes.map((m) => (
-          <option
-            key={m}
-            value={m}
-          >
-            {m}
-          </option>
+          <option key={m} value={m}>{m}</option>
         ))}
       </select>
     : <input
@@ -344,8 +236,7 @@ function VehicleSection({
         disabled={makeDisabled}
         placeholder={
           !vehicle.year ? "Select year first"
-          : rawMakes === null ?
-            "Loading makes…"
+          : rawMakes === null ? "Loading makes…"
           : "e.g. Toyota"
         }
         value={vehicle.make}
@@ -367,12 +258,7 @@ function VehicleSection({
           <option value={vehicle.model}>{vehicle.model}</option>
         )}
         {models.map((m) => (
-          <option
-            key={m}
-            value={m}
-          >
-            {m}
-          </option>
+          <option key={m} value={m}>{m}</option>
         ))}
       </select>
     : <input
@@ -380,10 +266,8 @@ function VehicleSection({
         disabled={modelDisabled}
         placeholder={
           !vehicle.year ? "Select year first"
-          : !vehicle.make ?
-            "Select make first"
-          : rawModels === null ?
-            "Loading models…"
+          : !vehicle.make ? "Select make first"
+          : rawModels === null ? "Loading models…"
           : "e.g. Camry"
         }
         value={vehicle.model}
@@ -391,15 +275,7 @@ function VehicleSection({
       />;
 
   return (
-    <div className="vehicle-section">
-      <h3>Vehicle Information</h3>
-      {customerId && (
-        <VehiclePickerStrip
-          customerId={customerId}
-          vehicle={vehicle}
-          onChange={onChange}
-        />
-      )}
+    <>
       <div className="vehicle-grid">
         <div className="form-group">
           <label>Year</label>
@@ -413,12 +289,7 @@ function VehicleSection({
           >
             <option value="">Year..</option>
             {YEARS.map((year) => (
-              <option
-                key={year}
-                value={year}
-              >
-                {year}
-              </option>
+              <option key={year} value={year}>{year}</option>
             ))}
           </select>
         </div>
@@ -479,6 +350,166 @@ function VehicleSection({
           onClose={() => setDecodeResult(null)}
         />
       )}
+    </>
+  );
+}
+
+// ── Vehicle picker strip (saved vehicles for a customer) ───────────────────────
+
+function vehicleLabel(v: Partial<Vehicle>) {
+  const parts = [v.year, v.make, v.model, v.trim].filter(Boolean);
+  return parts.length ? parts.join(" ") : "Unknown Vehicle";
+}
+
+function VehiclePickerStrip({
+  customerId,
+  vehicle,
+  onChange,
+  selectedId,
+  onSelectId,
+}: {
+  customerId: string;
+  vehicle: VehicleFields;
+  onChange: (v: VehicleFields) => void;
+  selectedId: string | null;
+  onSelectId: (id: string | null) => void;
+}) {
+  const [saved, setSaved] = useState<Vehicle[]>([]);
+
+  const refresh = () => getCustomerVehicles(customerId).then(setSaved);
+
+  useEffect(() => {
+    refresh();
+    onSelectId(null);
+  }, [customerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSelect = (v: Vehicle) => {
+    onChange({
+      year: v.year,
+      make: v.make,
+      model: v.model,
+      trim: v.trim,
+      vin: v.vin,
+      mileage: v.mileage,
+    });
+    onSelectId(v.id);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, v: Vehicle) => {
+    e.stopPropagation();
+    if (!window.confirm(`Delete "${vehicleLabel(v)}"?`)) return;
+    await deleteCustomerVehicle(customerId, v.id);
+    if (selectedId === v.id) onSelectId(null);
+    refresh();
+  };
+
+  const handleSave = async () => {
+    const hasData = vehicle.year || vehicle.make || vehicle.model;
+    if (!hasData) return;
+    if (selectedId) {
+      await updateCustomerVehicle(customerId, selectedId, vehicle);
+    } else {
+      const created = await saveCustomerVehicle(customerId, {
+        ...vehicle,
+        color: "",
+        notes: "",
+      });
+      onSelectId(created.id);
+    }
+    refresh();
+  };
+
+  return (
+    <div className="vehicle-picker">
+      <div className="vehicle-picker-header">
+        <span className="vehicle-picker-label">Saved Vehicles</span>
+        <button
+          type="button"
+          className="btn-small btn-secondary"
+          onClick={handleSave}
+          disabled={!vehicle.year && !vehicle.make && !vehicle.model}
+        >
+          {selectedId ? "Update Vehicle" : "Save Vehicle"}
+        </button>
+      </div>
+      {saved.length === 0 ?
+        <span className="vehicle-picker-empty">
+          No vehicles saved — fill in the form below and click Save Vehicle.
+        </span>
+      : <div className="vehicle-picker-chips">
+          {saved.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              className={`vehicle-chip${selectedId === v.id ? " selected" : ""}`}
+              onClick={() => handleSelect(v)}
+            >
+              <span>{vehicleLabel(v)}</span>
+              <span
+                className="vehicle-chip-delete"
+                role="button"
+                onClick={(e) => handleDelete(e, v)}
+              >
+                ×
+              </span>
+            </button>
+          ))}
+        </div>
+      }
+    </div>
+  );
+}
+
+// ── VehicleSection (quote screen) ─────────────────────────────────────────────
+
+const EMPTY_VEHICLE_FIELDS: VehicleFields = {
+  year: "", make: "", model: "", trim: "", vin: "", mileage: "",
+};
+
+function VehicleSection({
+  vehicle,
+  onChange,
+  customerId,
+}: {
+  vehicle: VehicleFields;
+  onChange: (v: VehicleFields) => void;
+  customerId: string | null;
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const hasData =
+    vehicle.year || vehicle.make || vehicle.model ||
+    vehicle.trim || vehicle.vin || vehicle.mileage;
+
+  const handleClear = () => {
+    onChange(EMPTY_VEHICLE_FIELDS);
+    setSelectedId(null);
+  };
+
+  return (
+    <div className="vehicle-section">
+      <div className="vehicle-section-header">
+        <h3>Vehicle Information</h3>
+        {hasData && (
+          <button
+            type="button"
+            className="btn-small btn-secondary"
+            onClick={handleClear}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      {customerId && (
+        <VehiclePickerStrip
+          customerId={customerId}
+          vehicle={vehicle}
+          onChange={onChange}
+          selectedId={selectedId}
+          onSelectId={setSelectedId}
+        />
+      )}
+      <VehicleFormFields vehicle={vehicle} onChange={onChange} />
     </div>
   );
 }

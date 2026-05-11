@@ -10,6 +10,8 @@ import {
   deleteCustomerVehicle,
 } from "../storage";
 import { CSVLoader } from "./CSVLoader";
+import { VehicleFormFields } from "./VehicleSection";
+import type { VehicleFields } from "./VehicleSection";
 import { formatPhone, formatPhoneInput } from "../utils/formatPhone";
 import type { Customer, PhoneEntry, Vehicle } from "../types/index";
 
@@ -157,52 +159,24 @@ function CustomerForm({ form, onChange, onSave, onCancel }: {
 
 // ── Vehicle form ──────────────────────────────────────────────────────────────
 
+type VehicleFormState = VehicleFields & { _editingId?: string };
+
 function VehicleForm({ form, onChange, onSave, onCancel }: {
-  form: Record<string, string>;
-  onChange: (f: Record<string, string>) => void;
+  form: VehicleFormState;
+  onChange: (f: VehicleFormState) => void;
   onSave: () => void;
   onCancel: () => void;
 }) {
-  const set = (f: string, v: string) => onChange({ ...form, [f]: v });
+  const vehicleFields: VehicleFields = {
+    year: form.year, make: form.make, model: form.model,
+    trim: form.trim, vin: form.vin, mileage: form.mileage,
+  };
   return (
     <div className="page-form page-card">
-      <div className="lib-form-row two-col">
-        <div className="lib-form-group">
-          <label>Year</label>
-          <input type="text" placeholder="e.g. 2020" maxLength={4}
-            value={form.year} onChange={(e) => set("year", e.target.value)} />
-        </div>
-        <div className="lib-form-group">
-          <label>Make</label>
-          <input type="text" placeholder="e.g. Honda"
-            value={form.make} onChange={(e) => set("make", e.target.value)} />
-        </div>
-      </div>
-      <div className="lib-form-row two-col">
-        <div className="lib-form-group">
-          <label>Model</label>
-          <input type="text" placeholder="e.g. Civic"
-            value={form.model} onChange={(e) => set("model", e.target.value)} />
-        </div>
-        <div className="lib-form-group">
-          <label>Trim</label>
-          <input type="text" placeholder="e.g. SE"
-            value={form.trim} onChange={(e) => set("trim", e.target.value)} />
-        </div>
-      </div>
-      <div className="lib-form-row two-col">
-        <div className="lib-form-group">
-          <label>Mileage</label>
-          <input type="text" placeholder="e.g. 45000"
-            value={form.mileage} onChange={(e) => set("mileage", e.target.value)} />
-        </div>
-        <div className="lib-form-group">
-          <label>VIN</label>
-          <input type="text" placeholder="17-character VIN" maxLength={17}
-            value={form.vin}
-            onChange={(e) => set("vin", e.target.value.toUpperCase())} />
-        </div>
-      </div>
+      <VehicleFormFields
+        vehicle={vehicleFields}
+        onChange={(v) => onChange({ ...form, ...v })}
+      />
       <div className="lib-form-actions">
         <button type="button" className="btn-small btn-secondary" onClick={onCancel}>Cancel</button>
         <button type="button" className="btn-small btn-success" onClick={onSave}>
@@ -328,7 +302,7 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [view, setView] = useState<View>("list");
   const [customerForm, setCustomerForm] = useState<CustomerFormData>(EMPTY_CUSTOMER_FORM);
-  const [vehicleForm, setVehicleForm] = useState<Record<string, string>>(EMPTY_VEHICLE_FORM);
+  const [vehicleForm, setVehicleForm] = useState<VehicleFormState>(EMPTY_VEHICLE_FORM);
   const [search, setSearch] = useState("");
 
   const refresh = () => getCustomers().then(setCustomers);
