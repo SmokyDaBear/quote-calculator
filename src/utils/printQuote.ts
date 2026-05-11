@@ -1,5 +1,5 @@
 import { formatPhone } from "./formatPhone";
-import type { GlobalRates, BusinessInfo } from "../types/index";
+import type { GlobalRates, BusinessInfo, Customer } from "../types/index";
 
 const ACCENT = "#1b3127";
 
@@ -95,15 +95,30 @@ function totalsHTML(totals: PrintTotals, rates: GlobalRates): string {
   </table>`;
 }
 
-function businessHeaderHTML(biz: Partial<BusinessInfo>): string {
-  if (!biz.name && !biz.logo) return "";
+function topHeaderHTML(biz: Partial<BusinessInfo>, customer: Customer | null, customerName: string, phone: string): string {
   const logoTag = biz.logo ? `<img src="${biz.logo}" class="biz-logo" alt="Logo"/>` : "";
-  const info = [
+  const bizInfo = [
     biz.name ? `<div class="biz-name">${biz.name}</div>` : "",
     biz.phone ? `<div class="biz-detail">${formatPhone(biz.phone)}</div>` : "",
     biz.address ? `<div class="biz-detail">${biz.address.replace(/\n/g, "<br/>")}</div>` : "",
   ].join("");
-  return `<div class="biz-header">${logoTag}<div class="biz-info">${info}</div></div>`;
+  const bizCol = (biz.name || biz.logo) ? `<div class="top-biz">${logoTag}<div class="biz-info">${bizInfo}</div></div>` : `<div class="top-biz"></div>`;
+
+  const displayName = customer?.name || customerName;
+  const displayPhone = customer ? (customer.phones[0]?.number ? formatPhone(customer.phones[0].number) : "") : (phone ? formatPhone(phone) : "");
+  const displayEmail = customer?.email || "";
+  const displayAddress = customer?.address || "";
+
+  const customerLines = [
+    displayName ? `<div class="cust-name">${displayName}</div>` : "",
+    displayPhone ? `<div class="cust-detail">${displayPhone}</div>` : "",
+    displayEmail ? `<div class="cust-detail">${displayEmail}</div>` : "",
+    displayAddress ? `<div class="cust-detail">${displayAddress.replace(/\n/g, "<br/>")}</div>` : "",
+  ].join("");
+
+  const custCol = customerLines ? `<div class="top-cust"><div class="cust-label">Bill To</div>${customerLines}</div>` : `<div class="top-cust"></div>`;
+
+  return `<div class="top-header">${bizCol}${custCol}</div>`;
 }
 
 function vehicleHTML(v: PrintVehicle): string {
@@ -151,6 +166,7 @@ export function printQuote({
   totals,
   discount,
   businessInfo = {},
+  customer = null,
 }: {
   quoteNumber: number;
   customerName: string;
@@ -162,6 +178,7 @@ export function printQuote({
   totals: PrintTotals;
   discount: { type?: string; value?: string; appliesTo?: string };
   businessInfo?: Partial<BusinessInfo>;
+  customer?: Customer | null;
 }): void {
   const date = new Date().toLocaleDateString("en-US", {
     year: "numeric",
@@ -182,18 +199,19 @@ html{height:100%}
 body{font-family:Arial,sans-serif;font-size:11pt;color:#222;padding:36px;min-height:100%;display:flex;flex-direction:column}
 .print-content{flex:1}
 
-.biz-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:18px}
+.top-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:24px}
+.top-biz{display:flex;align-items:flex-start;gap:14px}
 .biz-logo{max-height:64px;max-width:160px;object-fit:contain}
 .biz-name{font-size:14pt;font-weight:bold;color:${ACCENT}}
 .biz-detail{font-size:9.5pt;color:#555;margin-top:2px;white-space:pre-line}
+.top-cust{text-align:right}
+.cust-label{font-size:8pt;font-weight:bold;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-bottom:4px}
+.cust-name{font-size:12pt;font-weight:bold;color:#222}
+.cust-detail{font-size:9.5pt;color:#555;margin-top:2px;white-space:pre-line}
 
-.head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
 .qnum{font-size:12pt;font-weight:bold;color:${ACCENT}}
 .qdate{font-size:10pt;color:#666}
-
-.customer{padding-left:10px;margin-bottom:12px}
-.cname{font-size:13pt;font-weight:bold}
-.cphone{font-size:10pt;color:#555;margin-top:2px}
 
 .vehicle-block{margin-bottom:12px;font-size:10pt}
 .vehicle-label{font-size:8pt;font-weight:bold;text-transform:uppercase;letter-spacing:.5px;color:#999;margin-bottom:3px}
@@ -236,14 +254,10 @@ hr{border:none;border-top:1px solid #ddd;margin:14px 0}
 </head>
 <body>
 <div class="print-content">
-${businessHeaderHTML(businessInfo)}
+${topHeaderHTML(businessInfo, customer, customerName, phone)}
 <div class="head">
   <div class="qnum">Quote #${quoteNumber}</div>
   <div class="qdate">${date}</div>
-</div>
-<div class="customer">
-  <div class="cname">${customerName || "Customer"}</div>
-  ${phone ? `<div class="cphone">${formatPhone(phone)}</div>` : ""}
 </div>
 ${vehicleHTML(vehicle)}
 ${notes && notes.trim() ? `<div class="notes-box"><div class="notes-label">Notes</div>${notes.trim()}</div>` : ""}

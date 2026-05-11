@@ -48,7 +48,7 @@ import {
   saveAccent,
   getPartsLibrary,
 } from "./storage";
-import type { GlobalRates, BusinessInfo, QuoteIndexEntry, JobTemplate, WorkingJob, WorkingPart, TemplatePart_Specific } from "./types/index";
+import type { GlobalRates, BusinessInfo, QuoteIndexEntry, JobTemplate, WorkingJob, WorkingPart, TemplatePart_Specific, Customer } from "./types/index";
 import { ACCENT_PRESETS } from "./utils/accentPresets";
 import { About } from "./components/About";
 import WelcomeModal, { WELCOME_KEY, WELCOME_VERSION } from "./components/WelcomeModal";
@@ -106,6 +106,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [notes, setNotes] = useState("");
   const [vehicle, setVehicle] = useState(EMPTY_VEHICLE);
   const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
@@ -277,6 +278,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     setCustomerName("");
     setPhone("");
     setCustomerId(null);
+    setSelectedCustomer(null);
     setNotes("");
     setVehicle(EMPTY_VEHICLE);
     setRates(await loadGlobalRates());
@@ -397,7 +399,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   };
 
   const handlePrint = () => {
-    printQuote({ quoteNumber, customerName, phone, notes, vehicle, jobs, rates, totals, discount, businessInfo });
+    printQuote({ quoteNumber, customerName, phone, notes, vehicle, jobs, rates, totals, discount, businessInfo, customer: selectedCustomer });
   };
 
   const handleSaveAsTemplate = async (job: WorkingJob) => {
@@ -552,7 +554,8 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                 phone={phone}
                 setPhone={setPhone}
                 onNewQuote={handleNewQuote}
-                onCustomerSelect={(c: { id: string } | null) => setCustomerId(c ? c.id : null)}
+                onCustomerSelect={(c: Customer | null) => { setCustomerId(c ? c.id : null); setSelectedCustomer(c); }}
+                selectedCustomer={selectedCustomer}
               />
               <VehicleSection vehicle={vehicle} onChange={setVehicle} customerId={customerId} />
               <NotesSection notes={notes} onChange={setNotes} />

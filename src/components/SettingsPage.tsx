@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { DEFAULT_RATES, saveJobTemplate, saveLibraryPart } from "../storage";
 import { ACCENT_PRESETS } from "../utils/accentPresets";
 import { DEFAULT_MARKUP_MATRIX, grossProfitPct } from "../utils/partsMarkup";
-import { CSVLoader, exportAllDataCSV, parseCSV } from "./CSVLoader";
+import { exportAllDataCSV, parseCSV } from "./CSVLoader";
 import { formatPhoneInput } from "../utils/formatPhone";
 import { TemplatePart } from "../types";
 
@@ -260,6 +260,7 @@ function SettingsPage({
         <div className="accent-swatch-row">
           {ACCENT_PRESETS.map((preset) => (
             <button
+              type="button"
               key={preset.id}
               className={`accent-swatch${accent === preset.id ? " active" : ""}`}
               style={{ "--swatch-color": preset.swatch } as React.CSSProperties}
@@ -603,12 +604,15 @@ function SettingsPage({
                 onClick={handleExportFirst}
                 disabled={wipeExporting}
               >
-                {wipeExporting ? "Exporting…"
-                  : wipeExported ? "✓ Data Exported"
-                  : "Export Data First"}
+                {wipeExporting ?
+                  "Exporting…"
+                : wipeExported ?
+                  "✓ Data Exported"
+                : "Export Data First"}
               </button>
               <span className="wipe-export-hint">
-                Downloads a CSV backup of your inventory, templates, and customers.
+                Downloads a CSV backup of your inventory, templates, and
+                customers.
               </span>
             </div>
             <div className="modal-actions">
