@@ -1,5 +1,20 @@
 import type { QuoteIndexEntry } from "../types/index";
 
+function formatVehicle(v: unknown): string {
+  if (!v) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "object") {
+    const veh = v as {
+      year?: string;
+      make?: string;
+      model?: string;
+      trim?: string;
+    };
+    return [veh.year, veh.make, veh.model, veh.trim].filter(Boolean).join(" ");
+  }
+  return "";
+}
+
 type THistorySidebarProps = {
   history: QuoteIndexEntry[];
   searchTerm: string;
@@ -56,8 +71,10 @@ function HistorySidebar({
                 </div>
               </div>
               <div className="history-customer">{item.customer}</div>
-              {item.vehicle && (
-                <div className="history-phone">{item.vehicle}</div>
+              {formatVehicle(item.vehicle) && (
+                <div className="history-phone">
+                  {formatVehicle(item.vehicle)}
+                </div>
               )}
               <div className="history-date">
                 {new Date(item.createdAt).toLocaleDateString()}

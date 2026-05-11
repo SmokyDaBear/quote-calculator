@@ -10,6 +10,8 @@ import { CATEGORY_NAMES, getSubcategories } from "../utils/partCategories";
 import { calculateSellPrice } from "../utils/partsMarkup";
 import { CSVLoader } from "./CSVLoader";
 
+const PAGE_SIZE = 15;
+
 const EMPTY_FORM = {
   partNumber: "",
   name: "",
@@ -185,11 +187,24 @@ function InventoryPage({
   >("list");
   const [form, setForm] = useState<TPartFormProps["form"]>(EMPTY_FORM);
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("");
+  const [page, setPage] = useState(1);
 
   const refresh = () => getPartsLibrary().then(setParts);
   useEffect(() => {
     refresh();
   }, []);
+
+  const handleSearchChange = (q: string) => { setSearch(q); setPage(1); };
+  const handleCategoryChange = (cat: string) => {
+    setCategoryFilter(cat);
+    setSubcategoryFilter("");
+    setPage(1);
+  };
+  const handleSubcategoryChange = (sub: string) => { setSubcategoryFilter(sub); setPage(1); };
+
+  const filterSubcategories = getSubcategories(categoryFilter);
 
   const openNew = () => {
     setForm(EMPTY_FORM);
@@ -240,19 +255,22 @@ function InventoryPage({
     refresh();
   };
 
-  const filtered =
-    search.trim() ?
-      parts.filter((p) => {
-        const q = search.toLowerCase();
-        return (
-          p.name.toLowerCase().includes(q) ||
-          (p.partNumber || "").toLowerCase().includes(q) ||
-          (p.description || "").toLowerCase().includes(q) ||
-          (p.category || "").toLowerCase().includes(q) ||
-          (p.subcategory || "").toLowerCase().includes(q)
-        );
-      })
-    : parts;
+  const filtered = parts.filter((p) => {
+    if (categoryFilter && p.category !== categoryFilter) return false;
+    if (subcategoryFilter && p.subcategory !== subcategoryFilter) return false;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(q) ||
+        (p.partNumber || "").toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="page-container">
@@ -283,20 +301,43 @@ function InventoryPage({
 
       {view === "list" ?
         <>
-          <div className="page-search">
+          <div className="templates-filter-bar">
             <input
-              type="text"
-              placeholder="Search by name, part #, or category..."
+              type="search"
+              placeholder="Search by name or part #…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              aria-label="Search inventory"
             />
+            <select
+              aria-label="Filter by category"
+              value={categoryFilter}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+            >
+              <option value="">All Categories</option>
+              {CATEGORY_NAMES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              aria-label="Filter by subcategory"
+              value={subcategoryFilter}
+              onChange={(e) => handleSubcategoryChange(e.target.value)}
+              disabled={!categoryFilter || filterSubcategories.length === 0}
+            >
+              <option value="">All Subcategories</option>
+              {filterSubcategories.map((s: string) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
           </div>
+
           <div className="page-list">
             {parts.length === 0 ?
               <div className="page-empty">No parts in inventory yet.</div>
             : filtered.length === 0 ?
               <div className="page-empty">No parts match your search.</div>
-            : filtered.map((p) => (
+            : paginated.map((p) => (
                 <div
                   key={p.id}
                   className="page-item page-card"
@@ -340,6 +381,33 @@ function InventoryPage({
               ))
             }
           </div>
+
+          {pageCount > 1 && (
+            <div className="templates-pagination">
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                ← Prev
+              </button>
+              <span className="templates-pagination-info">
+                Page {page} of {pageCount}
+                <span className="templates-pagination-count">
+                  {" "}({filtered.length} total)
+                </span>
+              </span>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={page === pageCount}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </>
       : <PartForm
           form={form}

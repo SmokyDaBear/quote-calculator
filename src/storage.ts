@@ -59,6 +59,16 @@ export async function getHistoryIndex(): Promise<QuoteIndexEntry[]> {
   return entries.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+function formatVehicleLabel(v: unknown): string {
+  if (!v) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'object') {
+    const veh = v as { year?: string; make?: string; model?: string; trim?: string };
+    return [veh.year, veh.make, veh.model, veh.trim].filter(Boolean).join(' ');
+  }
+  return '';
+}
+
 export async function saveQuote(quoteData: Record<string, unknown>): Promise<number> {
   const quoteNumber = await getNextQuoteNumber();
   const now = Date.now();
@@ -68,7 +78,7 @@ export async function saveQuote(quoteData: Record<string, unknown>): Promise<num
     createdAt: now,
     updatedAt: now,
     customer: (quoteData.customerName as string) || 'Unknown',
-    vehicle: (quoteData.vehicle as string) || '',
+    vehicle: formatVehicleLabel(quoteData.vehicle),
     total: (quoteData.grandTotal as number) || 0,
   };
 
@@ -94,7 +104,7 @@ export async function updateQuote(quoteId: number | string, quoteData: Record<st
     ...existing,
     updatedAt: Date.now(),
     customer: (quoteData.customerName as string) || 'Unknown',
-    vehicle: (quoteData.vehicle as string) || '',
+    vehicle: formatVehicleLabel(quoteData.vehicle),
     total: (quoteData.grandTotal as number) || 0,
   };
 
