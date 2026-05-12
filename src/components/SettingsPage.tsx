@@ -1,10 +1,15 @@
 import { useState, useRef } from "react";
-import { DEFAULT_RATES, saveJobTemplate, saveLibraryPart, repricePartsLibrary } from "../storage";
+import {
+  DEFAULT_RATES,
+  saveJobTemplate,
+  saveLibraryPart,
+  repricePartsLibrary,
+} from "../storage";
 import { ACCENT_PRESETS } from "../utils/accentPresets";
 import { DEFAULT_MARKUP_MATRIX, grossProfitPct } from "../utils/partsMarkup";
 import { exportAllDataCSV, parseCSV } from "./CSVLoader";
 import { formatPhoneInput } from "../utils/formatPhone";
-import { TemplatePart } from "../types";
+import { JobCategory, TemplatePart } from "../types";
 
 type TSettingsPageProps = {
   rates: typeof DEFAULT_RATES;
@@ -101,6 +106,9 @@ function SettingsPage({
             laborHrs: Number(row["laborHrs"]) || 0,
             laborCost: Number(row["laborCost"]) || 0,
             parts,
+            mileageInterval: Number(row["mileageInterval"]) || 0,
+            quickJob: row["quickJob"] === "true",
+            jobCategory: (row["jobCategory"] as JobCategory) || undefined,
           });
         }),
       );
@@ -205,9 +213,9 @@ function SettingsPage({
     try {
       const count = await repricePartsLibrary(rates.partsMarkupMatrix);
       onToast?.(
-        count > 0
-          ? `Repriced ${count} part${count !== 1 ? "s" : ""} using the current matrix.`
-          : "No parts to reprice (all have menu pricing or no cost set).",
+        count > 0 ?
+          `Repriced ${count} part${count !== 1 ? "s" : ""} using the current matrix.`
+        : "No parts to reprice (all have menu pricing or no cost set).",
       );
     } finally {
       setRepriceLoading(false);
@@ -373,7 +381,7 @@ function SettingsPage({
             />
           </div>
         </div>
-        <br/>
+        <br />
         <div className="settings-actions">
           <button
             className="btn-small btn-success"
@@ -555,7 +563,8 @@ function SettingsPage({
             {repriceLoading ? "Repricing…" : "Apply to Inventory"}
           </button>
           <span className="settings-reprice-hint">
-            Recalculates sell prices for all non-menu-priced parts using the current matrix.
+            Recalculates sell prices for all non-menu-priced parts using the
+            current matrix.
           </span>
         </div>
       </div>
