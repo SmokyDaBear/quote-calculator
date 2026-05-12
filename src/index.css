@@ -11,6 +11,7 @@
   --text-secondary: #5a6a7a;
   --card-bg: #ffffff;
   --input-bg: #ffffff;
+  --input-bg-disabled: #e0e4e8;
   --border-color: #dde3ea;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 8px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08), 0 4px 20px rgba(0, 0, 0, 0.05);
@@ -37,6 +38,7 @@
   --text-secondary: #8a9ab0;
   --card-bg: #252d36;
   --input-bg: rgba(255, 255, 255, 0.07);
+  --input-bg-disabled: rgba(255, 255, 255, 0.03);
   --border-color: rgba(255, 255, 255, 0.1);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.35), 0 4px 20px rgba(0, 0, 0, 0.2);
@@ -1347,6 +1349,49 @@ button[disabled] {
   margin-left: 0.25rem;
 }
 
+.lib-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.lib-label-row label:first-child {
+  margin-bottom: 0;
+}
+
+.menu-price-check {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.menu-price-check input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+}
+
+.menu-price-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0.1em 0.45em;
+  border-radius: 3px;
+  background: var(--accent-ring);
+  color: var(--accent);
+}
+
 .template-checkbox-label {
   display: flex;
   align-items: center;
@@ -1433,6 +1478,16 @@ button[disabled] {
   width: 64px;
 }
 
+.slot-est-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.slot-est-input {
+  width: 80px;
+}
+
 .template-slot-note {
   color: var(--text-secondary);
   font-size: 0.82em;
@@ -1503,6 +1558,22 @@ button[disabled] {
   margin: 0;
 }
 
+.fill-slot-est-note {
+  font-size: 0.82em;
+  color: var(--accent);
+  font-style: italic;
+  margin: 0;
+}
+
+.fill-option--est {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.fill-option--est.fill-option--selected {
+  opacity: 1;
+}
+
 .fill-slot-options {
   display: flex;
   flex-direction: column;
@@ -1567,6 +1638,329 @@ button[disabled] {
   color: var(--text-primary);
   background: none;
   box-shadow: none;
+}
+
+/* ── Inventory sub-tabs ──────────────────────────────────────────────────── */
+
+.inv-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 2px solid var(--border-color);
+  margin-bottom: 1.25rem;
+}
+
+.inv-tab {
+  padding: 0.45rem 1rem;
+  font-size: 0.85em;
+  font-weight: 600;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  margin-bottom: -2px;
+  border-radius: 4px 4px 0 0;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
+}
+
+.inv-tab:hover {
+  color: var(--text-primary);
+  background: var(--accent-ring);
+  box-shadow: none;
+}
+
+.inv-tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: none;
+}
+
+/* ── Part Price Guide ────────────────────────────────────────────────────── */
+
+.price-guide-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.price-guide-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.price-guide-toolbar-left,
+.price-guide-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.price-guide-filter-select {
+  font-size: 0.85em;
+}
+
+.price-guide-total-count {
+  font-size: 0.78em;
+  color: var(--text-secondary);
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 4px 12px;
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+.price-guide-desc {
+  font-size: 0.82em;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.price-guide-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.price-guide-section {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--card-bg);
+}
+
+.price-guide-section--active {
+  border-color: var(--accent);
+}
+
+.price-guide-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.85rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.price-guide-section--active .price-guide-section-header {
+  background: var(--accent-ring);
+  border-bottom-color: var(--accent);
+}
+
+.price-guide-cat-name {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.price-guide-cat-badge {
+  font-size: 0.72em;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-ring);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  padding: 1px 7px;
+}
+
+.price-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0;
+}
+
+.price-guide-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+}
+
+.price-guide-row:last-child {
+  border-bottom: none;
+}
+
+.price-guide-row--set {
+  background: color-mix(in srgb, var(--accent-ring) 40%, transparent);
+}
+
+.price-guide-subcat {
+  font-size: 0.82em;
+  color: var(--text-primary);
+  min-width: 0;
+  flex: 1;
+}
+
+.price-guide-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.price-guide-dollar {
+  font-size: 0.8em;
+  color: var(--text-secondary);
+}
+
+.price-guide-input {
+  width: 72px;
+  font-size: 0.82em;
+  padding: 3px 6px;
+  text-align: right;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+}
+
+.price-guide-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+/* ── Estimate badges & notes ─────────────────────────────────────────────── */
+
+.est-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.7em;
+  font-weight: 700;
+  font-style: italic;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 3px;
+  padding: 1px 5px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.est-badge--inline {
+  margin-left: 0.35rem;
+  vertical-align: middle;
+}
+
+.est-badge--subtle {
+  margin-left: 0.4rem;
+  opacity: 0.9;
+}
+
+.est-badge--slot {
+  margin-left: 0.25rem;
+}
+
+.est-note {
+  font-size: 0.75em;
+  font-style: italic;
+  color: #92400e;
+  margin-left: 0.5rem;
+}
+
+.part-row--estimate {
+  background: color-mix(in srgb, #fef3c7 30%, transparent);
+}
+
+.part-row-save-hint {
+  padding: 2px 4px 4px;
+}
+
+/* ── Customer search input (vehicle form) ────────────────────────────────── */
+
+.cust-search-wrap {
+  position: relative;
+}
+
+.cust-search-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  z-index: 200;
+  overflow: hidden;
+}
+
+.cust-search-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+}
+
+.cust-search-item:last-child {
+  border-bottom: none;
+}
+
+.cust-search-item:hover {
+  background: var(--accent-ring);
+  box-shadow: none;
+}
+
+.cust-search-name {
+  font-size: 0.88em;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 0;
+}
+
+.cust-search-phone {
+  font-size: 0.78em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.part-save-inv-btn {
+  font-size: 0.74em;
+  color: var(--accent);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.part-save-inv-btn:hover {
+  opacity: 0.75;
+  background: none;
+  box-shadow: none;
+}
+
+.save-inv-modal {
+  max-width: 540px;
+  width: 100%;
+}
+
+.save-inv-modal-body {
+  padding: 0 1rem 0.5rem;
+}
+
+.save-inv-modal-body .page-form {
+  box-shadow: none;
+  border: none;
+  padding: 0;
+  margin: 0;
 }
 
 /* Utility Classes */
@@ -2175,6 +2569,11 @@ button[disabled] {
   color: var(--text-primary);
   font-size: 0.88em;
 }
+.lib-form-group input:disabled,
+.lib-form-group textarea:disabled {
+  background: var(--input-bg-disabled);
+  color: var(--text-secondary);
+}
 
 .lib-form-row {
   display: flex;
@@ -2640,6 +3039,20 @@ button[disabled] {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
+}
+
+.settings-reprice-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.settings-reprice-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
 }
 
 @media (max-width: 480px) {
@@ -3483,8 +3896,14 @@ button[disabled] {
 }
 
 @keyframes welcome-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .welcome-slide {
@@ -3555,7 +3974,9 @@ button[disabled] {
   border: none;
   padding: 0;
   cursor: pointer;
-  transition: background 0.2s, transform 0.2s;
+  transition:
+    background 0.2s,
+    transform 0.2s;
 }
 
 .welcome-dot--active {
@@ -3920,6 +4341,10 @@ button[disabled] {
   display: flex;
   gap: 0.4rem;
   flex-wrap: wrap;
+}
+
+.csv-file-input {
+  display: none;
 }
 
 .csv-panel {

@@ -13,6 +13,7 @@ import InventoryPage from "./components/InventoryPage";
 import SettingsPage from "./components/SettingsPage";
 import CustomersPage from "./components/CustomersPage";
 import VendorsPage from "./components/VendorsPage";
+import VehiclesPage from "./components/VehiclesPage";
 import VehicleSection from "./components/VehicleSection";
 import ServiceRecommendations from "./components/ServiceRecommendations";
 import QuickJobs from "./components/QuickJobs";
@@ -26,6 +27,7 @@ import {
   IconSettings,
   IconCustomers,
   IconVendors,
+  IconVehicles,
   PrintIcon,
   SaveIcon,
 } from "./icons";
@@ -88,6 +90,7 @@ const NAV_TABS = [
   { id: "templates", label: "Job Templates",  icon: <IconTemplates /> },
   { id: "inventory", label: "Inventory",      icon: <IconInventory /> },
   { id: "customers", label: "Customers",      icon: <IconCustomers /> },
+  { id: "vehicles",  label: "Vehicles",       icon: <IconVehicles /> },
   { id: "vendors",   label: "Vendors",        icon: <IconVendors /> },
   { id: "settings",  label: "Settings",       icon: <IconSettings /> },
 ];
@@ -607,6 +610,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
             <InventoryPage onToast={toast} markupMatrix={rates.partsMarkupMatrix} />
           )}
           {activeView === "customers" && <CustomersPage onToast={toast} />}
+          {activeView === "vehicles" && <VehiclesPage onToast={toast} />}
           {activeView === "vendors" && <VendorsPage onToast={toast} />}
           {activeView === "about" && <About />}
           {activeView === "settings" && (

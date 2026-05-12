@@ -5,7 +5,7 @@ const ACCENT = "#1b3127";
 
 const fmt = (n: number) => `$${Number(n).toFixed(2)}`;
 
-type PrintPart = { partNumber?: string; name?: string; price?: number | string; quantity?: number };
+type PrintPart = { partNumber?: string; name?: string; price?: number | string; quantity?: number; isEstimate?: boolean };
 type PrintJobSummary = { id: number; laborCost: number; laborHrs: number; subtotal: number };
 type PrintTotals = {
   jobSummaries: PrintJobSummary[];
@@ -22,24 +22,31 @@ type PrintVehicle = { year?: string; make?: string; model?: string; trim?: strin
 
 function partsTableHTML(parts: PrintPart[]): string {
   if (!parts || parts.length === 0) return "";
+  const hasEstimates = parts.some((p) => p.isEstimate);
   const rows = parts
     .map((p) => {
       const extended = (Number(p.price) || 0) * (Number(p.quantity) || 1);
-      return `<tr>
+      const nameSuffix = p.isEstimate ? ' <span class="est-mark">*est.</span>' : "";
+      const priceStr = p.isEstimate ? `<span class="est-mark">~${fmt(Number(p.price) || 0)}</span>` : fmt(Number(p.price) || 0);
+      const extStr = p.isEstimate ? `<span class="est-mark">~${fmt(extended)}</span>` : fmt(extended);
+      return `<tr${p.isEstimate ? ' class="est-row"' : ""}>
       <td>${p.partNumber || ""}</td>
-      <td>${p.name || ""}</td>
-      <td class="r">${fmt(Number(p.price) || 0)}</td>
+      <td>${p.name || ""}${nameSuffix}</td>
+      <td class="r">${priceStr}</td>
       <td class="r">${p.quantity ?? 1}</td>
-      <td class="r">${fmt(extended)}</td>
+      <td class="r">${extStr}</td>
     </tr>`;
     })
     .join("");
+  const footnote = hasEstimates
+    ? `<div class="est-footnote">* estimated price — subject to change</div>`
+    : "";
   return `<table class="parts">
     <thead><tr>
       <th>Part #</th><th>Name</th><th>Price</th><th>Qty</th><th>Extended</th>
     </tr></thead>
     <tbody>${rows}</tbody>
-  </table>`;
+  </table>${footnote}`;
 }
 
 function jobsHTML(jobs: PrintJob[], totals: PrintTotals): string {
@@ -231,6 +238,9 @@ hr{border:none;border-top:1px solid #ddd;margin:14px 0}
 .parts th:nth-child(3),.parts th:nth-child(4),.parts th:nth-child(5){text-align:right}
 .parts td{padding:4px 8px;border-bottom:1px solid #ddd}
 .r{text-align:right}
+.est-row td{color:#92400e}
+.est-mark{color:#92400e;font-style:italic}
+.est-footnote{font-size:8.5pt;color:#92400e;font-style:italic;margin-top:3px;margin-bottom:6px}
 
 .job-meta{display:flex;flex-wrap:wrap;gap:16px;font-size:9.5pt;color:#555;margin-top:4px}
 .job-sub{font-weight:bold;color:#222;margin-left:auto}

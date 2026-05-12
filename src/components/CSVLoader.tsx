@@ -7,6 +7,9 @@ import {
   saveCustomer,
   getCustomers,
   getAllVehicles,
+  saveVehicle,
+  saveVendor,
+  getVendors,
 } from "../storage";
 
 type CsvField = {
@@ -44,6 +47,26 @@ const CUSTOMER_FIELDS: CsvField[] = [
   { key: "name", label: "Name", required: true },
   { key: "phone", label: "Phone", required: false },
   { key: "email", label: "Email", required: false },
+  { key: "address", label: "Address", required: false },
+  { key: "notes", label: "Notes", required: false },
+];
+
+const VEHICLE_FIELDS: CsvField[] = [
+  { key: "customerId", label: "Customer ID", required: false },
+  { key: "year", label: "Year", required: true },
+  { key: "make", label: "Make", required: false },
+  { key: "model", label: "Model", required: false },
+  { key: "trim", label: "Trim", required: false },
+  { key: "vin", label: "VIN", required: false },
+  { key: "mileage", label: "Mileage", required: false },
+  { key: "color", label: "Color", required: false },
+  { key: "notes", label: "Notes", required: false },
+];
+
+const VENDOR_FIELDS: CsvField[] = [
+  { key: "name", label: "Name", required: true },
+  { key: "phone", label: "Phone", required: false },
+  { key: "contact", label: "Contact Person", required: false },
   { key: "address", label: "Address", required: false },
   { key: "notes", label: "Notes", required: false },
 ];
@@ -128,6 +151,14 @@ const ALIASES: Record<string, string[]> = {
   email: ["emailaddress", "email_address", "e_mail", "mail"],
   address: ["addr", "street", "streetaddress", "street_address", "location"],
   notes: ["note", "comments", "comment", "remarks", "memo", "internal_notes"],
+  customerId: ["customer_id", "customerid", "ownerid", "owner_id"],
+  year: ["modelyear", "model_year", "yr", "vehicleyear"],
+  make: ["manufacturer", "brand", "carmake"],
+  model: ["modelname", "model_name", "carmodel"],
+  vin: ["vinnumber", "vin_number", "vehicleidentificationnumber"],
+  mileage: ["miles", "odometer", "km", "kilometers", "odoreading"],
+  color: ["colour", "exteriorcolor", "exterior_color", "paint"],
+  contact: ["contactperson", "contact_person", "rep", "salesrep", "sales_rep"],
 };
 
 function normalize(s: string): string {
@@ -217,14 +248,30 @@ export function downloadCSV(filename: string, content: string): void {
 }
 
 export async function exportAllDataCSV(): Promise<void> {
-  const [parts, templates, customers, vehicles] = await Promise.all([
+  const [parts, templates, customers, vehicles, vendors] = await Promise.all([
     getPartsLibrary(),
     getJobTemplates(),
     getCustomers(),
     getAllVehicles(),
+    getVendors(),
   ]);
   downloadCSV('inventory.csv', objectsToCSV(parts as unknown as Record<string, unknown>[]));
-  downloadCSV('templates.csv', objectsToCSV(templates as unknown as Record<string, unknown>[]));
+  downloadCSV(
+    'templates.csv',
+    objectsToCSV(
+      templates.map((t) => ({
+        id: t.id,
+        name: t.name,
+        jobCategory: t.jobCategory || '',
+        description: t.description || '',
+        laborHrs: t.laborHrs,
+        laborCost: t.laborCost,
+        mileageInterval: t.mileageInterval ?? '',
+        quickJob: t.quickJob ?? false,
+        parts: JSON.stringify(t.parts),
+      })),
+    ),
+  );
   downloadCSV(
     'customers.csv',
     objectsToCSV(
@@ -255,6 +302,19 @@ export async function exportAllDataCSV(): Promise<void> {
       })),
     ),
   );
+  downloadCSV(
+    'vendors.csv',
+    objectsToCSV(
+      vendors.map((v) => ({
+        id: v.id,
+        name: v.name,
+        phone: v.phones?.[0]?.number || '',
+        contact: v.contact || '',
+        address: v.address || '',
+        notes: v.notes || '',
+      })),
+    ),
+  );
 }
 
 export function CSVLoader({
@@ -262,7 +322,7 @@ export function CSVLoader({
   onRefresh,
   onToast,
 }: {
-  type?: "parts" | "templates" | "customers" | "vehicles";
+  type?: "parts" | "templates" | "customers" | "vehicles" | "vendors";
   onRefresh?: () => void;
   onToast?: (msg: string, type?: string) => void;
 }) {
@@ -276,6 +336,8 @@ export function CSVLoader({
   const fields =
     type === "parts" ? PART_FIELDS
     : type === "customers" ? CUSTOMER_FIELDS
+    : type === "vehicles" ? VEHICLE_FIELDS
+    : type === "vendors" ? VENDOR_FIELDS
     : TEMPLATE_FIELDS;
   const mappableFields = fields.filter((f) => !f.json);
 
@@ -307,16 +369,47 @@ export function CSVLoader({
   };
 
   const handleImport = async () => {
-    if (!mapping.name) {
-      onToast?.('Map the "Name" field before importing.', "error");
+    const requiredKey = type === "vehicles" ? "year" : "name";
+    const requiredLabel = type === "vehicles" ? "Year" : "Name";
+    if (!mapping[requiredKey]) {
+      onToast?.(`Map the "${requiredLabel}" field before importing.`, "error");
       return;
     }
     let count = 0;
     const saves: Promise<unknown>[] = [];
     for (const row of csvRows) {
-      const name = row[mapping.name]?.trim();
-      if (!name) continue;
-      if (type === "customers") {
+      const primaryValue =
+        type === "vehicles"
+          ? row[mapping.year]?.trim()
+          : row[mapping.name]?.trim();
+      if (!primaryValue) continue;
+      const name = primaryValue;
+      if (type === "vehicles") {
+        saves.push(
+          saveVehicle({
+            customerId: mapping.customerId ? row[mapping.customerId]?.trim() || "" : "",
+            year: primaryValue,
+            make: mapping.make ? row[mapping.make] || "" : "",
+            model: mapping.model ? row[mapping.model] || "" : "",
+            trim: mapping.trim ? row[mapping.trim] || "" : "",
+            vin: mapping.vin ? row[mapping.vin] || "" : "",
+            mileage: mapping.mileage ? row[mapping.mileage] || "" : "",
+            color: mapping.color ? row[mapping.color] || "" : "",
+            notes: mapping.notes ? row[mapping.notes] || "" : "",
+          }),
+        );
+      } else if (type === "vendors") {
+        const phone = mapping.phone ? row[mapping.phone] || "" : "";
+        saves.push(
+          saveVendor({
+            name,
+            phones: phone ? [{ label: "Phone", number: phone }] : [],
+            contact: mapping.contact ? row[mapping.contact] || "" : "",
+            address: mapping.address ? row[mapping.address] || "" : "",
+            notes: mapping.notes ? row[mapping.notes] || "" : "",
+          }),
+        );
+      } else if (type === "customers") {
         const phone = mapping.phone ? row[mapping.phone] || "" : "";
         saves.push(
           saveCustomer({
@@ -387,6 +480,8 @@ export function CSVLoader({
     const noun =
       type === "parts" ? "part"
       : type === "customers" ? "customer"
+      : type === "vehicles" ? "vehicle"
+      : type === "vendors" ? "vendor"
       : "template";
     onToast?.(`Imported ${count} ${noun}${count !== 1 ? "s" : ""}.`);
   };
@@ -416,6 +511,16 @@ export function CSVLoader({
         notes: v.notes,
       }));
       downloadCSV("vehicles.csv", objectsToCSV(rows));
+    } else if (type === "vendors") {
+      const rows = (await getVendors()).map((v) => ({
+        id: v.id,
+        name: v.name,
+        phone: v.phones?.[0]?.number || "",
+        contact: v.contact || "",
+        address: v.address || "",
+        notes: v.notes || "",
+      }));
+      downloadCSV("vendors.csv", objectsToCSV(rows));
     } else if (type === "parts") {
       downloadCSV(
         "inventory.csv",
@@ -533,10 +638,10 @@ export function CSVLoader({
       <div className="csv-done page-card">
         <span className="csv-done-msg">
           ✓ Imported {importCount}{" "}
-          {type === "parts" ?
-            "part"
-          : type === "customers" ?
-            "customer"
+          {type === "parts" ? "part"
+          : type === "customers" ? "customer"
+          : type === "vehicles" ? "vehicle"
+          : type === "vendors" ? "vendor"
           : "template"}
           {importCount !== 1 ? "s" : ""}.
         </span>
@@ -557,12 +662,14 @@ export function CSVLoader({
         aria-label={`Select CSV file to import ${
           type === "parts" ? "parts"
           : type === "customers" ? "customers"
+          : type === "vehicles" ? "vehicles"
+          : type === "vendors" ? "vendors"
           : "job templates"
         }`}
         ref={fileRef}
         type="file"
         accept=".csv,text/csv"
-        style={{ display: "none" }}
+        className="csv-file-input"
         onChange={handleFileChange}
       />
       <button

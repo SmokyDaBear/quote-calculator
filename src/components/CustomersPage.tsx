@@ -298,12 +298,15 @@ type View =
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 10;
+
 function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => void }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [view, setView] = useState<View>("list");
   const [customerForm, setCustomerForm] = useState<CustomerFormData>(EMPTY_CUSTOMER_FORM);
   const [vehicleForm, setVehicleForm] = useState<VehicleFormState>(EMPTY_VEHICLE_FORM);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const refresh = () => getCustomers().then(setCustomers);
   useEffect(() => { refresh(); }, []);
@@ -394,6 +397,8 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
 
   // ── Filtered list ───────────────────────────────────────────────────────────
 
+  const handleSearchChange = (val: string) => { setSearch(val); setPage(1); };
+
   const q = search.trim().toLowerCase();
   const filtered = q
     ? customers.filter(
@@ -403,6 +408,9 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
           c.phones.some((p) => p.number.toLowerCase().includes(q)),
       )
     : customers;
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // ── Heading / back ──────────────────────────────────────────────────────────
 
@@ -449,7 +457,7 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
               type="text"
               placeholder="Search by name, phone, or email…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
             />
           </div>
           <div className="page-list">
@@ -458,7 +466,7 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
             ) : filtered.length === 0 ? (
               <div className="page-empty">No customers match your search.</div>
             ) : (
-              filtered.map((c) => {
+              paginated.map((c) => {
                 const primaryPhone = c.phones?.find((p) => p.number)?.number ?? "";
                 return (
                   <div key={c.id} className="page-item page-card">
@@ -486,6 +494,33 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
               })
             )}
           </div>
+
+          {pageCount > 1 && (
+            <div className="templates-pagination">
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                ← Prev
+              </button>
+              <span className="templates-pagination-info">
+                Page {page} of {pageCount}
+                <span className="templates-pagination-count">
+                  {" "}({filtered.length} total)
+                </span>
+              </span>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={page === pageCount}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </>
       )}
 

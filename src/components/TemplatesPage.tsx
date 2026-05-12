@@ -6,12 +6,13 @@ import {
   deleteJobTemplate,
   loadGlobalRates,
   getPartsLibrary,
+  getEstimatedPriceMap,
 } from "../storage";
 import { CATEGORY_NAMES, getSubcategories } from "../utils/partCategories";
 import PartPickerModal from "./PartPickerModal";
 import { CSVLoader } from "./CSVLoader";
 import PartRow from "./PartRow";
-import type { JobTemplate, LibraryPart, TemplatePart, JobCategory } from "../types/index";
+import type { JobTemplate, LibraryPart, TemplatePart, JobCategory, EstimatedPriceMap } from "../types/index";
 import { JOB_CATEGORIES } from "../types/index";
 
 type WorkingCategorySlot = {
@@ -19,6 +20,7 @@ type WorkingCategorySlot = {
   category: string;
   subcategory: string;
   quantity: string | number;
+  estimatedPrice?: string;
 };
 type WorkingSpecificPart = {
   type: "specific";
@@ -59,13 +61,26 @@ type TemplateView = "list" | "new" | { editing: JobTemplate };
 
 // ── Category Slot Row ─────────────────────────────────────────────────────────
 
-function CategorySlotRow({ part, idx, onUpdate, onRemove }: {
+function CategorySlotRow({ part, idx, onUpdate, onRemove, priceMap = {} }: {
   part: WorkingCategorySlot;
   idx: number;
   onUpdate: (idx: number, patch: Record<string, unknown>) => void;
   onRemove: (idx: number) => void;
+  priceMap?: EstimatedPriceMap;
 }) {
   const subcategories = getSubcategories(part.category);
+
+  const handleCategoryChange = (cat: string) => {
+    onUpdate(idx, { category: cat, subcategory: "", estimatedPrice: "" });
+  };
+
+  const handleSubcategoryChange = (sub: string) => {
+    const mapped = priceMap[part.category]?.[sub];
+    onUpdate(idx, {
+      subcategory: sub,
+      ...(mapped != null && mapped > 0 ? { estimatedPrice: mapped.toString() } : {}),
+    });
+  };
 
   return (
     <div className="part-row part-row--slot">
@@ -73,7 +88,7 @@ function CategorySlotRow({ part, idx, onUpdate, onRemove }: {
       <select
         aria-label="Part category"
         value={part.category}
-        onChange={(e) => onUpdate(idx, { category: e.target.value, subcategory: "" })}
+        onChange={(e) => handleCategoryChange(e.target.value)}
       >
         <option value="">Category…</option>
         {CATEGORY_NAMES.map((c) => (
@@ -83,7 +98,7 @@ function CategorySlotRow({ part, idx, onUpdate, onRemove }: {
       <select
         aria-label="Part subcategory"
         value={part.subcategory}
-        onChange={(e) => onUpdate(idx, { subcategory: e.target.value })}
+        onChange={(e) => handleSubcategoryChange(e.target.value)}
         disabled={!part.category}
       >
         <option value="">Subcategory…</option>
@@ -103,6 +118,21 @@ function CategorySlotRow({ part, idx, onUpdate, onRemove }: {
           className="slot-qty-input"
         />
       </div>
+      <div className="slot-est-wrap">
+        <label className="slot-qty-label">Est. $</label>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          placeholder="0.00"
+          value={part.estimatedPrice ?? ""}
+          onChange={(e) => onUpdate(idx, { estimatedPrice: e.target.value })}
+          className="slot-est-input"
+        />
+        {Number(part.estimatedPrice) > 0 && (
+          <span className="est-badge est-badge--slot">~Est.</span>
+        )}
+      </div>
       <button type="button" className="btn-remove" onClick={() => onRemove(idx)}>
         ×
       </button>
@@ -118,13 +148,19 @@ function PartsEditor({ parts, onChange, onOpenPicker }: {
   onOpenPicker: () => void;
 }) {
   const [library, setLibrary] = useState<LibraryPart[]>([]);
-  useEffect(() => { getPartsLibrary().then(setLibrary); }, []);
+  const [priceMap, setPriceMap] = useState<EstimatedPriceMap>({});
+  useEffect(() => {
+    Promise.all([getPartsLibrary(), getEstimatedPriceMap()]).then(([lib, map]) => {
+      setLibrary(lib);
+      setPriceMap(map);
+    });
+  }, []);
 
   const addPart = () =>
     onChange([...parts, { type: "specific", partNumber: "", name: "", price: "", quantity: 1 }]);
 
   const addCategorySlot = () =>
-    onChange([...parts, { type: "category", category: "", subcategory: "", quantity: 1 }]);
+    onChange([...parts, { type: "category", category: "", subcategory: "", quantity: 1, estimatedPrice: "" }]);
 
   const updatePart = (idx: number, patch: Record<string, unknown>) =>
     onChange(parts.map((p, i) => (i === idx ? { ...p, ...patch } as FormTemplatePart : p)));
@@ -175,6 +211,7 @@ function PartsEditor({ parts, onChange, onOpenPicker }: {
                   idx={idx}
                   onUpdate={updatePart}
                   onRemove={removePart}
+                  priceMap={priceMap}
                 />
               );
             }
@@ -224,13 +261,18 @@ function TemplateForm({ form, onChange, onSave, onCancel, onOpenPicker, laborRat
   };
 
   const specificParts = form.parts.filter((p): p is WorkingSpecificPart => p.type !== "category");
+  const categorySlots = form.parts.filter((p): p is WorkingCategorySlot => p.type === "category");
   const partsTotal = specificParts.reduce(
     (sum, p) => sum + (Number(p.price) || 0) * (Number(p.quantity) || 0),
     0,
   );
+  const slotsEstTotal = categorySlots.reduce(
+    (sum, s) => sum + (Number(s.estimatedPrice) || 0) * (Number(s.quantity) || 1),
+    0,
+  );
   const laborCost = Number(form.laborCost) || 0;
-  const jobTotal = partsTotal + laborCost;
-  const slotCount = form.parts.filter((p) => p.type === "category").length;
+  const jobTotal = partsTotal + laborCost + slotsEstTotal;
+  const slotCount = categorySlots.length;
 
   return (
     <div className="page-form page-card">
@@ -331,12 +373,20 @@ function TemplateForm({ form, onChange, onSave, onCancel, onOpenPicker, laborRat
         </div>
         {slotCount > 0 && (
           <div className="template-totals-row template-slot-note">
-            <span>{slotCount} category slot{slotCount !== 1 ? "s" : ""} — priced at selection</span>
+            <span>{slotCount} category slot{slotCount !== 1 ? "s" : ""}</span>
+            <span>
+              {slotsEstTotal > 0
+                ? `~$${slotsEstTotal.toFixed(2)} estimated`
+                : "priced at selection"}
+            </span>
           </div>
         )}
         <div className="template-totals-row template-totals-grand">
-          <span>Job Total</span>
-          <span>${jobTotal.toFixed(2)}</span>
+          <span>
+            {slotsEstTotal > 0 ? "~" : ""}Job Total
+            {slotsEstTotal > 0 && <span className="est-badge est-badge--subtle">est.</span>}
+          </span>
+          <span>{slotsEstTotal > 0 ? "~" : ""}${jobTotal.toFixed(2)}</span>
         </div>
       </div>
       <div className="lib-form-actions">
@@ -412,7 +462,11 @@ function TemplatesPage({ onApplyTemplate, onSwitchToQuote, onToast }: {
       laborHrs: t.laborHrs?.toString() || "",
       laborCost: t.laborCost?.toString() || "",
       parts: (t.parts || []).map((p): FormTemplatePart => {
-        if (p.type === "category") return { ...p, quantity: p.quantity };
+        if (p.type === "category") return {
+          ...p,
+          quantity: p.quantity,
+          estimatedPrice: p.estimatedPrice != null ? p.estimatedPrice.toString() : "",
+        };
         const found = library.find((lp) => lp.id === p.partId);
         return {
           type: "specific",
@@ -441,7 +495,14 @@ function TemplatesPage({ onApplyTemplate, onSwitchToQuote, onToast }: {
       laborCost: Number(form.laborCost) || 0,
       parts: form.parts.map((p): TemplatePart => {
         if (p.type === "category") {
-          return { type: "category", category: p.category, subcategory: p.subcategory, quantity: Number(p.quantity) || 1 };
+          const ep = Number(p.estimatedPrice) || 0;
+          return {
+            type: "category",
+            category: p.category,
+            subcategory: p.subcategory,
+            quantity: Number(p.quantity) || 1,
+            ...(ep > 0 ? { estimatedPrice: ep } : {}),
+          };
         }
         let partId = p.partId || "";
         if (!partId && p.name) {

@@ -7,6 +7,9 @@ import {
 } from "../storage";
 import { formatPhone, formatPhoneInput } from "../utils/formatPhone";
 import type { Vendor } from "../types/index";
+import { CSVLoader } from "./CSVLoader";
+
+const PAGE_SIZE = 10;
 
 const EMPTY_FORM = { name: "", phone: "", address: "", contact: "", notes: "" };
 
@@ -89,6 +92,7 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
   const [view, setView] = useState<View>("list");
   const [form, setForm] = useState<Record<string, string>>(EMPTY_FORM);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const refresh = () => getVendors().then(setVendors);
   useEffect(() => { refresh(); }, []);
@@ -135,6 +139,8 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
     onToast?.(`"${name}" deleted.`, "info");
   };
 
+  const handleSearchChange = (val: string) => { setSearch(val); setPage(1); };
+
   const q = search.trim().toLowerCase();
   const filtered = q
     ? vendors.filter(
@@ -144,6 +150,9 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
           v.phones.some((p) => p.number.toLowerCase().includes(q)),
       )
     : vendors;
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const isEditing = typeof view === "object" && "editing" in view;
   const heading = view === "list" ? "Vendors" : isEditing ? "Edit Vendor" : "New Vendor";
@@ -162,6 +171,7 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
         </div>
         {view === "list" && (
           <div className="page-header-actions">
+            <CSVLoader type="vendors" onRefresh={refresh} onToast={onToast} />
             <button type="button" className="btn-small" onClick={openNew}>
               + New Vendor
             </button>
@@ -176,7 +186,7 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
               type="text"
               placeholder="Search by name, contact, or phone..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
             />
           </div>
           <div className="page-list">
@@ -185,7 +195,7 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
             ) : filtered.length === 0 ? (
               <div className="page-empty">No vendors match your search.</div>
             ) : (
-              filtered.map((v) => {
+              paginated.map((v) => {
                 const primaryPhone = v.phones?.[0]?.number ?? "";
                 return (
                   <div key={v.id} className="page-item page-card">
@@ -225,6 +235,33 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
               })
             )}
           </div>
+
+          {pageCount > 1 && (
+            <div className="templates-pagination">
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                ← Prev
+              </button>
+              <span className="templates-pagination-info">
+                Page {page} of {pageCount}
+                <span className="templates-pagination-count">
+                  {" "}({filtered.length} total)
+                </span>
+              </span>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                disabled={page === pageCount}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </>
       )}
 

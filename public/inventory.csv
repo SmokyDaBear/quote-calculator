@@ -1,19 +1,20 @@
-id,name,partNumber,cost,price,msrp,category,subcategory,description
-28aea68d-7989-48c4-8e4f-67760af6015d,0W20 FS Quart,1-0-20FS,8.54,15.19,13.49,Lubricants,Synthetic Oil,1 QUART Full Synthetic 0W20
-a5ba0919-ad41-474a-b318-49263baa922c,5W20 FS Quart,1-5-20FS,8.54,15.19,13.49,Lubricants,Synthetic Oil,1 QUART Full Synthetic 5W20
-440996c2-f968-4dbd-8b6a-1e1acd0d0d08,5W30 FS Quart,1-5-30FS,8.59,15.28,13.49,Lubricants,Synthetic Oil,1 QUART Full Synthetic 5W30
-481fd2df-1286-48f5-a135-60d6cb76c840,Air Filter,AFP1,22.59,36.63,26.99,Filters,Engine Air Filter,Premium Panel Air Filter
-db2cf3ae-68ae-4dd7-9c33-7d3df97818bd,BG Coolant Kit,BGCOOLANT,32.59,51.26,39.99,Misc,Chemicals,BG Coolant Kit
-c8879a1d-c0b8-41ad-90a2-98d1943fd438,BG Frigifresh,BGFRID,15.95,24.95,24.95,Misc,Chemicals,BG Frigi-Fresh hospital grade disinfectanct aerosol.
-f20ed019-ddea-4988-9151-e6bc94ac994e,BG Transmission Service Kit,BGTRANS,28.49,45.31,39.99,Misc,Chemicals,BG Transmission Kit w/ flush and conditioner
-6fc5a9b9-4281-4287-96f6-eb6a55796a02,Brake Pad,BRKPD1,0,44.59,0,Brakes,Brake Pads,Universal Brake Pad
-2d5c156d-a7dd-4d9a-a090-1836ebc9cb97,Brake Rotor,BRKRTR1,0,104.59,0,Brakes,Brake Rotors,Universal Brake Rotor
-d97411d5-ada5-45d6-b973-2dbb6d8e8852,Cabin Air Filter,CAF1,24.29,39.19,27.99,Filters,Cabin Air Filter,Cabin Air filter
-f27525b0-4c42-4c8e-8fc1-735e121a4aa1,Coolant Universal Gallon,COOLANT1,9.49,16.86,11.99,Lubricants,Coolant / Antifreeze,Yellow Universal Coolant
-adda6d77-0d88-4297-bc21-952b371a2642,DOT 3 Brake Fluid,BRKFLDDOT3,5.49,9.86,7.99,Lubricants,Brake Fluid,Dot 3 Brake Fluid 1 qt
-96d3418a-2521-438c-878d-71e9be315a7a,DOT 4 Brake Fluid,BRKFLDDOT4,12.49,21.48,17.99,Lubricants,Brake Fluid,Dot 4 Brake Fluid 1 qt
-d65a847f-7d95-4646-9e93-9a994231e12e,Engine Air Filter,AF1,18.95,31.17,23.99,Filters,Engine Air Filter,Panel Air Filter
-5e8adbf1-4b7b-49d4-a516-d53c01082a8e,Intake Gasket,INTKGSKT1,19.84,32.51,24.99,Engine,Gaskets & Seals,Fel-Pro HP Intake Manifold Gasket Kit
-31f1fefb-dabe-4e47-85d8-0b848ed00010,Oil Filter,OF2,7.95,14.16,11.99,Filters,Oil Filter,Oil Filter
-56abe764-0570-4e58-b692-f6e543c8aebf,Oil Filter,OF1,5.95,10.66,7.99,Filters,Oil Filter,Oil Filter
-fbd6a6d5-e8a8-413c-aa9a-58b4e174b5eb,Spark Plug,SPRKPLG1,8.49,15.11,12.99,Engine,Spark Plugs,Spark plug
+id,partNumber,name,cost,price,msrp,description,category,subcategory,vendorId,createdAt,menuPrice
+28aea68d-7989-48c4-8e4f-67760af6015d,1-0-20FS,0W20 FS Quart,8.54,15.19,13.49,1 QUART Full Synthetic 0W20,Fluids,Synthetic Oil,,1778463010442,false
+a5ba0919-ad41-474a-b318-49263baa922c,1-5-20FS,5W20 FS Quart,8.54,15.19,13.49,1 QUART Full Synthetic 5W20,Fluids,Synthetic Oil,,1778463010442,false
+440996c2-f968-4dbd-8b6a-1e1acd0d0d08,1-5-30FS,5W30 FS Quart,8.59,15.28,13.49,1 QUART Full Synthetic 5W30,Fluids,Synthetic Oil,,1778463010442,false
+481fd2df-1286-48f5-a135-60d6cb76c840,AFP1,Air Filter,22.59,36.63,26.99,Premium Panel Air Filter,Filters,Engine Air Filter,,1778463010442,false
+db2cf3ae-68ae-4dd7-9c33-7d3df97818bd,BGCOOLANT,BG Coolant Kit,32.59,51.26,39.99,BG Coolant Kit,Misc,Chemicals,,1778463010442,
+c8879a1d-c0b8-41ad-90a2-98d1943fd438,BGFRID,BG Frigifresh,15.95,26.67,24.95,BG Frigi-Fresh hospital grade disinfectanct aerosol.,Misc,Chemicals,,1778463010442,
+03c99e1b-45df-469e-8ad4-5cf8aee95534,BGGDISRV,BG GDI Service Kit,38.95,59.99,49.95,GDI induction and fuel service kit.,Misc,Chemicals,,1778562338614,
+f20ed019-ddea-4988-9151-e6bc94ac994e,BGTRANS,BG Transmission Service Kit,28.49,45.31,39.99,BG Transmission Kit w/ flush and conditioner,Misc,Chemicals,,1778463010442,
+6fc5a9b9-4281-4287-96f6-eb6a55796a02,BRKPD1,Brake Pad,0,44.59,0,Universal Brake Pad,Brakes,Brake Pads,,1778463010443,
+2d5c156d-a7dd-4d9a-a090-1836ebc9cb97,BRKRTR1,Brake Rotor,0,104.59,0,Universal Brake Rotor,Brakes,Brake Rotors,,1778463010443,
+d97411d5-ada5-45d6-b973-2dbb6d8e8852,CAF1,Cabin Air Filter,24.29,39.19,27.99,Cabin Air filter,Filters,Cabin Air Filter,,1778463010443,
+f27525b0-4c42-4c8e-8fc1-735e121a4aa1,COOLANT1,Coolant Universal Gallon,9.49,16.86,11.99,Yellow Universal Coolant,Fluids,Coolant / Antifreeze,,1778463010443,false
+adda6d77-0d88-4297-bc21-952b371a2642,BRKFLDDOT3,DOT 3 Brake Fluid,5.49,9.86,7.99,Dot 3 Brake Fluid 1 qt,Fluids,Brake Fluid,,1778463010443,false
+96d3418a-2521-438c-878d-71e9be315a7a,BRKFLDDOT4,DOT 4 Brake Fluid,12.49,21.48,17.99,Dot 4 Brake Fluid 1 qt,Fluids,Brake Fluid,,1778463010443,false
+d65a847f-7d95-4646-9e93-9a994231e12e,AF1,Engine Air Filter,18.95,31.17,23.99,Panel Air Filter,Filters,Engine Air Filter,,1778463010443,
+5e8adbf1-4b7b-49d4-a516-d53c01082a8e,INTKGSKT1,Intake Gasket,19.84,32.51,24.99,Fel-Pro HP Intake Manifold Gasket Kit,Engine,Gaskets & Seals,,1778463010443,
+31f1fefb-dabe-4e47-85d8-0b848ed00010,OF2,Oil Filter,7.95,14.16,11.99,Oil Filter,Filters,Oil Filter,,1778463010443,
+56abe764-0570-4e58-b692-f6e543c8aebf,OF1,Oil Filter,5.95,10.66,7.99,Oil Filter,Filters,Oil Filter,,1778463010443,
+fbd6a6d5-e8a8-413c-aa9a-58b4e174b5eb,SPRKPLG1,Spark Plug,8.49,15.11,12.99,Spark plug,Engine,Spark Plugs,,1778463010443,

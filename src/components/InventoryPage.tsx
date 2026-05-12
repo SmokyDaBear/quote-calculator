@@ -7,172 +7,12 @@ import {
 } from "../storage";
 import type { LibraryPart, MarkupBracket } from "../types/index";
 import { CATEGORY_NAMES, getSubcategories } from "../utils/partCategories";
-import { calculateSellPrice } from "../utils/partsMarkup";
 import { CSVLoader } from "./CSVLoader";
+import PartEstimatesPage from "./PartEstimatesPage";
+import PartForm, { EMPTY_PART_FORM } from "./PartForm";
+import type { PartFormData } from "./PartForm";
 
 const PAGE_SIZE = 10;
-
-const EMPTY_FORM = {
-  partNumber: "",
-  name: "",
-  cost: "",
-  price: "",
-  msrp: "",
-  description: "",
-  category: "",
-  subcategory: "",
-};
-
-type TPartFormProps = {
-  form: typeof EMPTY_FORM & { _editingId?: string };
-  onChange: (form: TPartFormProps["form"]) => void;
-  onSave: () => void;
-  onCancel: () => void;
-  markupMatrix?: MarkupBracket[];
-};
-
-function PartForm({
-  form,
-  onChange,
-  onSave,
-  onCancel,
-  markupMatrix,
-}: TPartFormProps) {
-  const set = (field: string, value: string) =>
-    onChange({ ...form, [field]: value });
-  const subcategories = getSubcategories(form.category);
-
-  const handleCategoryChange = (value: string) => {
-    onChange({ ...form, category: value, subcategory: "" });
-  };
-
-  const handleCostChange = (value: string) => {
-    const sell =
-      value && markupMatrix ?
-        calculateSellPrice(Number(value), markupMatrix)
-      : 0;
-    onChange({ ...form, cost: value, price: sell > 0 ? sell.toFixed(2) : "" });
-  };
-
-  return (
-    <div className="page-form page-card">
-      <div className="lib-form-group">
-        <label>Name *</label>
-        <input
-          type="text"
-          placeholder="Part name"
-          value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-        />
-      </div>
-      <div className="lib-form-group">
-        <label>Part #</label>
-        <input
-          type="text"
-          placeholder="Part number"
-          value={form.partNumber}
-          onChange={(e) => set("partNumber", e.target.value)}
-        />
-      </div>
-      <div className="lib-form-row three-col">
-        <div className="lib-form-group">
-          <label>Cost ($)</label>
-          <input
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={form.cost}
-            onChange={(e) => handleCostChange(e.target.value)}
-          />
-        </div>
-        <div className="lib-form-group">
-          <label>
-            Sell Price ($) <span className="lib-label-hint">auto</span>
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={form.price}
-            onChange={(e) => set("price", e.target.value)}
-          />
-        </div>
-        <div className="lib-form-group">
-          <label>MSRP / List ($)</label>
-          <input
-            type="number"
-            step="0.01"
-            placeholder="0.00"
-            value={form.msrp}
-            onChange={(e) => set("msrp", e.target.value)}
-          />
-        </div>
-      </div>
-      <div className="lib-form-row two-col">
-        <div className="lib-form-group">
-          <label>Category</label>
-          <select
-            aria-label="Select category"
-            value={form.category}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-          >
-            <option value="">— None —</option>
-            {CATEGORY_NAMES.map((c) => (
-              <option
-                key={c}
-                value={c}
-              >
-                {c}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="lib-form-group">
-          <label>Subcategory</label>
-          <select
-            aria-label="Select subcategory"
-            value={form.subcategory}
-            onChange={(e) => set("subcategory", e.target.value)}
-            disabled={!form.category}
-          >
-            <option value="">— None —</option>
-            {subcategories.map((s: string) => (
-              <option
-                key={s}
-                value={s}
-              >
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <div className="lib-form-group">
-        <label>Description</label>
-        <textarea
-          className="lib-textarea"
-          placeholder="Part description..."
-          value={form.description}
-          onChange={(e) => set("description", e.target.value)}
-        />
-      </div>
-      <div className="lib-form-actions">
-        <button
-          className="btn-small btn-secondary"
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-        <button
-          className="btn-small btn-success"
-          onClick={onSave}
-        >
-          {form._editingId ? "Update Part" : "Save Part"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function InventoryPage({
   onToast,
@@ -181,11 +21,12 @@ function InventoryPage({
   onToast?: (msg: string, type?: string) => void;
   markupMatrix?: MarkupBracket[];
 }) {
+  const [subView, setSubView] = useState<"parts" | "estimates">("parts");
   const [parts, setParts] = useState<LibraryPart[]>([]);
   const [view, setView] = useState<
     "list" | "new" | { editing: Record<string, unknown> }
   >("list");
-  const [form, setForm] = useState<TPartFormProps["form"]>(EMPTY_FORM);
+  const [form, setForm] = useState<PartFormData>(EMPTY_PART_FORM);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [subcategoryFilter, setSubcategoryFilter] = useState("");
@@ -207,7 +48,7 @@ function InventoryPage({
   const filterSubcategories = getSubcategories(categoryFilter);
 
   const openNew = () => {
-    setForm(EMPTY_FORM);
+    setForm(EMPTY_PART_FORM);
     setView("new");
   };
 
@@ -221,6 +62,7 @@ function InventoryPage({
       description: p.description || "",
       category: p.category || "",
       subcategory: p.subcategory || "",
+      menuPrice: p.menuPrice ?? false,
       _editingId: p.id,
     });
     setView({ editing: p as unknown as Record<string, unknown> });
@@ -237,6 +79,7 @@ function InventoryPage({
       description: form.description,
       category: form.category,
       subcategory: form.subcategory,
+      menuPrice: form.menuPrice,
     };
     if (typeof view === "object" && "editing" in view) {
       await updateLibraryPart(view.editing.id as string, data);
@@ -276,13 +119,15 @@ function InventoryPage({
     <div className="page-container">
       <div className="page-header">
         <h2>
-          {view === "list" ?
+          {subView === "estimates" ?
+            "Part Price Guide"
+          : view === "list" ?
             "Inventory"
           : typeof view === "object" && "editing" in view ?
             "Edit Part"
           : "New Part"}
         </h2>
-        {view === "list" && (
+        {subView === "parts" && view === "list" && (
           <div className="page-header-actions">
             <CSVLoader
               type="parts"
@@ -299,7 +144,26 @@ function InventoryPage({
         )}
       </div>
 
-      {view === "list" ?
+      <div className="inv-tabs">
+        <button
+          type="button"
+          className={`inv-tab${subView === "parts" ? " inv-tab--active" : ""}`}
+          onClick={() => { setSubView("parts"); setView("list"); }}
+        >
+          Parts Library
+        </button>
+        <button
+          type="button"
+          className={`inv-tab${subView === "estimates" ? " inv-tab--active" : ""}`}
+          onClick={() => setSubView("estimates")}
+        >
+          Part Price Guide
+        </button>
+      </div>
+
+      {subView === "estimates" ? (
+        <PartEstimatesPage onToast={onToast} />
+      ) : view === "list" ?
         <>
           <div className="templates-filter-bar">
             <input
@@ -345,6 +209,9 @@ function InventoryPage({
                   <div className="page-item-info">
                     <div className="page-item-name-row">
                       <strong className="page-item-name">{p.name}</strong>
+                      {p.menuPrice && (
+                        <span className="menu-price-badge">Menu</span>
+                      )}
                       {p.category && (
                         <span className="part-category-badge">
                           {p.subcategory ?
@@ -419,6 +286,7 @@ function InventoryPage({
       }
     </div>
   );
+
 }
 
 export default InventoryPage;

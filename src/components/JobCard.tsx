@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getPartsLibrary } from "../storage";
 import { EditIcon } from "../icons";
 import PartRow from "./PartRow";
+import SaveToInventoryModal from "./SaveToInventoryModal";
 import type { LibraryPart, WorkingJob, WorkingPart } from "../types/index";
 
 function JobCard({
@@ -20,6 +21,7 @@ function JobCard({
   isBlank: boolean;
 }) {
   const [library, setLibrary] = useState<LibraryPart[]>([]);
+  const [saveToInvIdx, setSaveToInvIdx] = useState<number | null>(null);
 
   useEffect(() => {
     getPartsLibrary().then(setLibrary);
@@ -64,6 +66,7 @@ function JobCard({
     0,
   );
 
+  const hasEstimates = job.parts.some((p) => p.isEstimate);
   const laborCost = Number(job.laborCost) || 0;
   const laborHrs = Number(job.laborHrs) || 0;
 
@@ -101,12 +104,14 @@ function JobCard({
           )}
           {job.parts.length > 0 && (
             <span>
-              {job.parts.length} part{job.parts.length !== 1 ? "s" : ""} · $
+              {job.parts.length} part{job.parts.length !== 1 ? "s" : ""} · {hasEstimates ? "~" : ""}$
               {partsTotal.toFixed(2)}
+              {hasEstimates && <span className="est-badge est-badge--inline">est.</span>}
             </span>
           )}
           <span className="job-card-collapsed-subtotal">
-            Subtotal: ${subtotal.toFixed(2)}
+            {hasEstimates ? "~" : ""}Subtotal: ${subtotal.toFixed(2)}
+            {hasEstimates && <span className="est-badge est-badge--inline">est.</span>}
           </span>
         </div>
         {job.description && (
@@ -213,10 +218,12 @@ function JobCard({
                 onReplace={replacePart}
                 onRemove={removePart}
                 priceAtList={job.priceAtList || false}
+                onSaveToInventory={() => setSaveToInvIdx(idx)}
               />
             ))}
             <div className="parts-total-row">
-              Parts Total: ${partsTotal.toFixed(2)}
+              Parts Total: {hasEstimates ? "~" : ""}${partsTotal.toFixed(2)}
+              {hasEstimates && <span className="est-note">* includes estimated pricing</span>}
             </div>
           </>
         )}
@@ -232,6 +239,26 @@ function JobCard({
         />
       </div>
 
+      {saveToInvIdx !== null && (
+        <SaveToInventoryModal
+          initialData={job.parts[saveToInvIdx] ?? {}}
+          onSaved={(saved) => {
+            const p = job.parts[saveToInvIdx];
+            if (p) {
+              replacePart(saveToInvIdx, {
+                partNumber: saved.partNumber || p.partNumber,
+                name: saved.name,
+                cost: saved.cost ? saved.cost.toString() : undefined,
+                msrp: saved.msrp ? saved.msrp.toString() : undefined,
+              });
+            }
+            setLibrary((prev) => [...prev, saved]);
+            setSaveToInvIdx(null);
+          }}
+          onCancel={() => setSaveToInvIdx(null)}
+        />
+      )}
+
       <div className="job-footer">
         <button
           type="button"
@@ -241,8 +268,9 @@ function JobCard({
           Save as Template
         </button>
         <div className="job-subtotal">
-          <span>Subtotal: </span>
+          <span>{hasEstimates ? "~" : ""}Subtotal: </span>
           <span className="job-subtotal-value">${subtotal.toFixed(2)}</span>
+          {hasEstimates && <span className="est-badge est-badge--subtle">est.</span>}
         </div>
       </div>
     </div>

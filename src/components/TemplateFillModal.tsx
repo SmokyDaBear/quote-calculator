@@ -2,16 +2,14 @@ import { useState, useEffect } from "react";
 import { getPartsLibrary } from "../storage";
 import type { JobTemplate, LibraryPart, TemplatePart_Category, WorkingPart } from "../types/index";
 
+const ESTIMATED = "__estimated__";
+
 function TemplateFillModal({ template, onConfirm, onCancel }: {
   template: JobTemplate;
   onConfirm: (parts: WorkingPart[]) => void;
   onCancel: () => void;
 }) {
   const [library, setLibrary] = useState<LibraryPart[]>([]);
-
-  useEffect(() => {
-    getPartsLibrary().then(setLibrary);
-  }, []);
 
   const slots = (template.parts || [])
     .map((p, idx) => ({ ...p, idx }))
@@ -21,16 +19,48 @@ function TemplateFillModal({ template, onConfirm, onCancel }: {
     Object.fromEntries(slots.map((s) => [s.idx, null]))
   );
 
-  const select = (slotIdx: number, partId: string) =>
-    setSelections((prev) => ({ ...prev, [slotIdx]: partId === prev[slotIdx] ? null : partId }));
+  useEffect(() => {
+    getPartsLibrary().then((lib) => {
+      setLibrary(lib);
+      // Auto-select estimated for slots with no inventory match and an estimated price
+      setSelections((prev) => {
+        const next = { ...prev };
+        slots.forEach((slot) => {
+          if (prev[slot.idx] !== null) return;
+          const hasMatch = lib.some(
+            (p) => p.category === slot.category && p.subcategory === slot.subcategory,
+          );
+          if (!hasMatch && slot.estimatedPrice && Number(slot.estimatedPrice) > 0) {
+            next[slot.idx] = ESTIMATED;
+          }
+        });
+        return next;
+      });
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const select = (slotIdx: number, value: string) =>
+    setSelections((prev) => ({ ...prev, [slotIdx]: value === prev[slotIdx] ? null : value }));
 
   const handleConfirm = () => {
     const resolvedParts: WorkingPart[] = (template.parts || [])
       .map((p, idx): WorkingPart | null => {
         if (p.type !== "category") return null;
-        const partId = selections[idx];
-        if (!partId) return null;
-        const found = library.find((l) => l.id === partId);
+        const selection = selections[idx];
+
+        if (selection === ESTIMATED) {
+          return {
+            partNumber: "",
+            name: `${p.subcategory || p.category} (estimated)`,
+            price: (Number(p.estimatedPrice) || 0).toFixed(2),
+            quantity: Number(p.quantity) || 1,
+            isEstimate: true,
+          };
+        }
+
+        if (!selection) return null;
+
+        const found = library.find((l) => l.id === selection);
         if (!found) return null;
         return {
           partNumber: found.partNumber || "",
@@ -46,10 +76,10 @@ function TemplateFillModal({ template, onConfirm, onCancel }: {
   };
 
   const allRequiredFilled = slots.every((s) => {
-    const matches = library.filter(
-      (p) => p.category === s.category && p.subcategory === s.subcategory
+    const hasMatch = library.some(
+      (p) => p.category === s.category && p.subcategory === s.subcategory,
     );
-    return matches.length === 0 || selections[s.idx] !== null;
+    return !hasMatch || selections[s.idx] !== null;
   });
 
   return (
@@ -65,9 +95,10 @@ function TemplateFillModal({ template, onConfirm, onCancel }: {
         <div className="fill-modal-body">
           {slots.map((slot) => {
             const matches = library.filter(
-              (p) => p.category === slot.category && p.subcategory === slot.subcategory
+              (p) => p.category === slot.category && p.subcategory === slot.subcategory,
             );
             const selected = selections[slot.idx];
+            const hasEst = slot.estimatedPrice && Number(slot.estimatedPrice) > 0;
 
             return (
               <div key={slot.idx} className="fill-slot">
@@ -84,11 +115,29 @@ function TemplateFillModal({ template, onConfirm, onCancel }: {
                 </div>
 
                 {matches.length === 0 ? (
-                  <p className="fill-slot-empty">
-                    No {slot.subcategory || slot.category} parts in inventory — slot will be skipped.
-                  </p>
+                  hasEst ? (
+                    <p className="fill-slot-est-note">
+                      No inventory match — adding as estimated placeholder at ${Number(slot.estimatedPrice).toFixed(2)}.
+                    </p>
+                  ) : (
+                    <p className="fill-slot-empty">
+                      No {slot.subcategory || slot.category} parts in inventory — slot will be skipped.
+                    </p>
+                  )
                 ) : (
                   <div className="fill-slot-options">
+                    {hasEst && (
+                      <button
+                        type="button"
+                        className={`fill-option fill-option--est${selected === ESTIMATED ? " fill-option--selected" : ""}`}
+                        onClick={() => select(slot.idx, ESTIMATED)}
+                      >
+                        <span className="fill-option-name">Use estimated placeholder</span>
+                        <span className="fill-option-meta">
+                          ${Number(slot.estimatedPrice).toFixed(2)}
+                        </span>
+                      </button>
+                    )}
                     {matches.map((p) => (
                       <button
                         key={p.id}

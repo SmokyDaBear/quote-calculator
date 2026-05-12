@@ -37,6 +37,7 @@ export interface LibraryPart {
   description: string;
   category: string;
   subcategory: string;
+  menuPrice?: boolean; // true = manually set price, skip matrix repricing
   vendorId?: string;  // FK → Vendor.id
   createdAt: number;
 }
@@ -54,6 +55,7 @@ export interface TemplatePart_Category {
   category: string;
   subcategory: string;
   quantity: number;
+  estimatedPrice?: number;
 }
 
 export type TemplatePart = TemplatePart_Specific | TemplatePart_Category;
@@ -100,6 +102,7 @@ export interface WorkingPart {
   cost?: string;
   msrp?: string;
   basePrice?: string;  // original sell price saved when priceAtList is enabled
+  isEstimate?: boolean;
 }
 
 export interface WorkingJob {
@@ -163,6 +166,11 @@ export interface GlobalRates {
   ssMax: number;
   partsMarkupMatrix: MarkupBracket[];
 }
+
+// ── Estimated price map ───────────────────────────────────────────────────────
+
+/** category → subcategory → estimated price */
+export type EstimatedPriceMap = Record<string, Record<string, number>>;
 
 export interface BusinessInfo {
   name: string;

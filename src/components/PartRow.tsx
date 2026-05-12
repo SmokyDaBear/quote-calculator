@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { LibraryPart } from "../types/index";
 
-type PartData = { partNumber: string; name: string; price: string; quantity: number; msrp?: string; cost?: string };
+type PartData = { partNumber: string; name: string; price: string; quantity: number; msrp?: string; cost?: string; isEstimate?: boolean };
 
 function searchLibrary(library: LibraryPart[], term: string): LibraryPart[] {
   if (!term.trim()) return [];
@@ -15,7 +15,7 @@ function searchLibrary(library: LibraryPart[], term: string): LibraryPart[] {
     .slice(0, 7);
 }
 
-function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtList = false }: {
+function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtList = false, onSaveToInventory }: {
   part: PartData;
   idx: number;
   library: LibraryPart[];
@@ -23,6 +23,7 @@ function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtLis
   onReplace: (idx: number, data: Partial<PartData>) => void;
   onRemove: (idx: number) => void;
   priceAtList?: boolean;
+  onSaveToInventory?: () => void;
 }) {
   const [results, setResults] = useState<LibraryPart[]>([]);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -63,9 +64,17 @@ function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtLis
 
   const extended = (Number(part.price) || 0) * (Number(part.quantity) || 0);
 
+  const trimmedName = part.name.trim();
+  const isInLibrary =
+    trimmedName !== "" &&
+    library.some((l) => l.name.toLowerCase() === trimmedName.toLowerCase());
+  const showSaveHint =
+    trimmedName !== "" && !part.isEstimate && !isInLibrary && !!onSaveToInventory;
+
   return (
     <div className="part-row-wrapper" ref={wrapperRef}>
-      <div className="part-row">
+      <div className={`part-row${part.isEstimate ? " part-row--estimate" : ""}`}>
+        {part.isEstimate && <span className="est-badge">~Est.</span>}
         <input
           type="text"
           placeholder="Part #"
@@ -122,6 +131,17 @@ function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtLis
               </span>
             </button>
           ))}
+        </div>
+      )}
+      {showSaveHint && (
+        <div className="part-row-save-hint">
+          <button
+            type="button"
+            className="part-save-inv-btn"
+            onMouseDown={(e) => { e.preventDefault(); onSaveToInventory!(); }}
+          >
+            + Save to Inventory
+          </button>
         </div>
       )}
     </div>

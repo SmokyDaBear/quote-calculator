@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { DEFAULT_RATES, saveJobTemplate, saveLibraryPart } from "../storage";
+import { DEFAULT_RATES, saveJobTemplate, saveLibraryPart, repricePartsLibrary } from "../storage";
 import { ACCENT_PRESETS } from "../utils/accentPresets";
 import { DEFAULT_MARKUP_MATRIX, grossProfitPct } from "../utils/partsMarkup";
 import { exportAllDataCSV, parseCSV } from "./CSVLoader";
@@ -43,6 +43,7 @@ function SettingsPage({
   const [bizSaved, setBizSaved] = useState(false);
   const [defaultsLoading, setDefaultsLoading] = useState(false);
   const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [repriceLoading, setRepriceLoading] = useState(false);
   const [showWipeModal, setShowWipeModal] = useState(false);
   const [wipeExporting, setWipeExporting] = useState(false);
   const [wipeExported, setWipeExported] = useState(false);
@@ -197,6 +198,20 @@ function SettingsPage({
 
   const resetMatrix = () => {
     onRatesChange({ ...rates, partsMarkupMatrix: DEFAULT_MARKUP_MATRIX });
+  };
+
+  const handleRepriceInventory = async () => {
+    setRepriceLoading(true);
+    try {
+      const count = await repricePartsLibrary(rates.partsMarkupMatrix);
+      onToast?.(
+        count > 0
+          ? `Repriced ${count} part${count !== 1 ? "s" : ""} using the current matrix.`
+          : "No parts to reprice (all have menu pricing or no cost set).",
+      );
+    } finally {
+      setRepriceLoading(false);
+    }
   };
 
   const formatRangeMin = (idx: number) => {
@@ -358,6 +373,7 @@ function SettingsPage({
             />
           </div>
         </div>
+        <br/>
         <div className="settings-actions">
           <button
             className="btn-small btn-success"
@@ -528,6 +544,19 @@ function SettingsPage({
           >
             Reset to Defaults
           </button>
+        </div>
+        <div className="settings-reprice-row">
+          <button
+            type="button"
+            className="btn-small btn-success"
+            onClick={handleRepriceInventory}
+            disabled={repriceLoading}
+          >
+            {repriceLoading ? "Repricing…" : "Apply to Inventory"}
+          </button>
+          <span className="settings-reprice-hint">
+            Recalculates sell prices for all non-menu-priced parts using the current matrix.
+          </span>
         </div>
       </div>
 

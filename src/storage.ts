@@ -1,4 +1,4 @@
-import { DEFAULT_MARKUP_MATRIX } from './utils/partsMarkup';
+import { DEFAULT_MARKUP_MATRIX, calculateSellPrice } from './utils/partsMarkup';
 import { dbGet, dbGetAll, dbPut, dbDelete, dbClear, settingsGet, settingsPut, openDB } from './db/index';
 import type {
   Customer,
@@ -10,6 +10,8 @@ import type {
   BusinessInfo,
   Vehicle,
   QuoteIndexEntry,
+  MarkupBracket,
+  EstimatedPriceMap,
 } from './types/index';
 
 // ── Rates ────────────────────────────────────────────────────────────────────
@@ -289,6 +291,29 @@ export async function deleteCustomerVehicle(customerId: string, vehicleId: strin
   await dbDelete('vehicles', vehicleId);
 }
 
+export async function saveVehicle(data: Omit<Vehicle, 'id' | 'createdAt'>): Promise<Vehicle> {
+  const vehicle: Vehicle = {
+    id: crypto.randomUUID(),
+    customerId: data.customerId || '',
+    year: data.year || '', make: data.make || '', model: data.model || '',
+    trim: data.trim || '', vin: data.vin || '', mileage: data.mileage || '',
+    color: data.color || '', notes: data.notes || '',
+    createdAt: Date.now(),
+  };
+  await dbPut('vehicles', vehicle);
+  return vehicle;
+}
+
+export async function updateVehicle(vehicleId: string, data: Partial<Vehicle>): Promise<void> {
+  const existing = await dbGet<Vehicle>('vehicles', vehicleId);
+  if (!existing) return;
+  await dbPut('vehicles', { ...existing, ...data, id: vehicleId });
+}
+
+export async function deleteVehicle(vehicleId: string): Promise<void> {
+  await dbDelete('vehicles', vehicleId);
+}
+
 // ── Vendors ───────────────────────────────────────────────────────────────────
 
 export async function getVendors(): Promise<Vendor[]> {
@@ -355,6 +380,17 @@ export async function deleteLibraryPart(id: string): Promise<void> {
   await dbDelete('parts', id);
 }
 
+export async function repricePartsLibrary(markupMatrix: MarkupBracket[]): Promise<number> {
+  const parts = await getPartsLibrary();
+  const toUpdate = parts.filter((p) => !p.menuPrice && p.cost > 0);
+  await Promise.all(
+    toUpdate.map((p) =>
+      dbPut('parts', { ...p, price: parseFloat(calculateSellPrice(p.cost, markupMatrix).toFixed(2)) }),
+    ),
+  );
+  return toUpdate.length;
+}
+
 export async function searchPartsLibrary(term: string): Promise<LibraryPart[]> {
   const all = await getPartsLibrary();
   const q = term.toLowerCase();
@@ -391,6 +427,9 @@ export async function saveJobTemplate(
     laborHrs: Number(data.laborHrs) || 0,
     laborCost: Number(data.laborCost) || 0,
     parts,
+    jobCategory: data.jobCategory,
+    mileageInterval: data.mileageInterval ?? null,
+    quickJob: data.quickJob ?? false,
     createdAt: Date.now(),
   };
   await dbPut('templates', template);
@@ -405,6 +444,16 @@ export async function updateJobTemplate(id: string, data: Partial<JobTemplate>):
 
 export async function deleteJobTemplate(id: string): Promise<void> {
   await dbDelete('templates', id);
+}
+
+// ── Estimated Price Map ───────────────────────────────────────────────────────
+
+export async function getEstimatedPriceMap(): Promise<EstimatedPriceMap> {
+  return (await settingsGet<EstimatedPriceMap>('estimatedPriceMap')) ?? {};
+}
+
+export async function saveEstimatedPriceMap(map: EstimatedPriceMap): Promise<void> {
+  await settingsPut('estimatedPriceMap', map);
 }
 
 // ── Accent ────────────────────────────────────────────────────────────────────
