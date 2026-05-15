@@ -189,6 +189,7 @@ export function VehicleFormFields({
   const [decodeResult, setDecodeResult] = useState<DecodeResult | null>(null);
   const [recalls, setRecalls] = useState<RecallState>(null);
   const [checkingRecalls, setCheckingRecalls] = useState(false);
+  const [vinDataOpen, setVinDataOpen] = useState(false);
 
   useEffect(() => {
     if (!vehicle.year) return;
@@ -451,8 +452,25 @@ export function VehicleFormFields({
       </div>
       {decodedVinData && decodedVinData.length > 0 && (
         <div className="vin-stored-data">
-          <span className="vin-stored-header">Decoded VIN Data</span>
-          <VinDataTable data={decodedVinData} />
+          <button
+            type="button"
+            className="vin-stored-toggle"
+            onClick={() => setVinDataOpen((o) => !o)}
+          >
+            <span>Decoded VIN Data</span>
+            <svg
+              className={`vin-stored-chevron${vinDataOpen ? " vin-stored-chevron--open" : ""}`}
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="4 6 8 10 12 6" />
+            </svg>
+          </button>
+          {vinDataOpen && <VinDataTable data={decodedVinData} />}
         </div>
       )}
       {vehicle.year && vehicle.make && vehicle.model && (

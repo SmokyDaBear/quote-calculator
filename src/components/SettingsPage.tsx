@@ -7,7 +7,8 @@ import {
 } from "../storage";
 import { ACCENT_PRESETS } from "../utils/accentPresets";
 import { DEFAULT_MARKUP_MATRIX, grossProfitPct } from "../utils/partsMarkup";
-import { exportAllDataCSV, parseCSV } from "./CSVLoader";
+import { parseCSV } from "./CSVLoader";
+import { downloadBackup, restoreBackup } from "../utils/backupData";
 import { formatPhoneInput } from "../utils/formatPhone";
 import { JobCategory, TemplatePart } from "../types";
 
@@ -52,15 +53,49 @@ function SettingsPage({
   const [showWipeModal, setShowWipeModal] = useState(false);
   const [wipeExporting, setWipeExporting] = useState(false);
   const [wipeExported, setWipeExported] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoring, setRestoring] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBackup = async () => {
+    setBackingUp(true);
+    try {
+      await downloadBackup();
+      onToast?.("Backup downloaded.");
+    } catch {
+      onToast?.("Backup failed.", "error");
+    } finally {
+      setBackingUp(false);
+    }
+  };
 
   const handleExportFirst = async () => {
     setWipeExporting(true);
     try {
-      await exportAllDataCSV();
+      await downloadBackup();
       setWipeExported(true);
     } finally {
       setWipeExporting(false);
+    }
+  };
+
+  const handleRestoreFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    if (!window.confirm("Restoring a backup will overwrite all current customers, vehicles, vendors, inventory, templates, and settings. Continue?")) return;
+    setRestoring(true);
+    try {
+      const counts = await restoreBackup(file);
+      onToast?.(
+        `Backup restored — ${counts.customers} customers, ${counts.vehicles} vehicles, ${counts.vendors} vendors, ${counts.inventory} parts, ${counts.templates} templates.`
+      );
+      setTimeout(() => window.location.reload(), 1200);
+    } catch {
+      onToast?.("Restore failed. Make sure the file is a valid backup .zip.", "error");
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -334,7 +369,7 @@ function SettingsPage({
                 ref={logoInputRef}
                 type="file"
                 accept="image/*"
-                style={{ display: "none" }}
+                className="hidden-file-input"
                 onChange={handleLogoUpload}
               />
             </div>
@@ -605,6 +640,30 @@ function SettingsPage({
           Permanently delete saved quotes and history, or wipe all data from
           this device.
         </p>
+        <div className="settings-actions">
+          <button
+            className="btn-small btn-secondary"
+            onClick={handleBackup}
+            disabled={backingUp}
+          >
+            {backingUp ? "Backing up…" : "Download Backup (.zip)"}
+          </button>
+          <button
+            className="btn-small btn-secondary"
+            onClick={() => restoreInputRef.current?.click()}
+            disabled={restoring}
+          >
+            {restoring ? "Restoring…" : "Restore Backup (.zip)"}
+          </button>
+          <input
+            ref={restoreInputRef}
+            type="file"
+            accept=".zip"
+            aria-label="Select backup zip file to restore"
+            className="hidden-file-input"
+            onChange={handleRestoreFile}
+          />
+        </div>
         <div className="settings-actions">
           <button
             className="btn-small btn-danger-sm"

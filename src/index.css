@@ -93,6 +93,15 @@ html {
   box-sizing: border-box;
 }
 
+.hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 @media (min-width: 1000px) {
   * {
     scrollbar-color: var(--accent) transparent;
@@ -3595,8 +3604,11 @@ button[disabled] {
   overflow: hidden;
 }
 
-.vin-stored-header {
-  display: block;
+.vin-stored-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   padding: 0.4rem 0.7rem;
   font-size: 0.8em;
   font-weight: 600;
@@ -3604,7 +3616,24 @@ button[disabled] {
   letter-spacing: 0.05em;
   color: var(--text-secondary);
   background: var(--opacity);
-  border-bottom: 1px solid var(--border);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vin-stored-toggle:hover {
+  background: var(--border);
+}
+
+.vin-stored-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.vin-stored-chevron--open {
+  transform: rotate(180deg);
 }
 
 .vin-table--inline {
