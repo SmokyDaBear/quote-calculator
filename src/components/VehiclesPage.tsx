@@ -6,7 +6,7 @@ import {
   updateVehicle,
   deleteVehicle,
 } from "../storage";
-import type { Vehicle, Customer } from "../types/index";
+import type { Vehicle, Customer, DecodedVinData } from "../types/index";
 import { VehicleFormFields } from "./VehicleSection";
 import type { VehicleFields } from "./VehicleSection";
 import { CSVLoader } from "./CSVLoader";
@@ -17,6 +17,7 @@ type VehicleFormState = VehicleFields & {
   customerId: string;
   color: string;
   notes: string;
+  decodedVinData?: DecodedVinData;
   _editingId?: string;
 };
 
@@ -153,6 +154,8 @@ function VehicleForm({
       <VehicleFormFields
         vehicle={vehicleFields}
         onChange={(v) => onChange({ ...form, ...v })}
+        decodedVinData={form.decodedVinData}
+        onDecodedData={(data) => onChange({ ...form, decodedVinData: data })}
       />
       <div className="lib-form-row two-col">
         <div className="lib-form-group">
@@ -213,6 +216,7 @@ function VehiclesPage({ onToast }: { onToast?: (msg: string, type?: string) => v
       trim: v.trim, vin: v.vin, mileage: v.mileage,
       customerId: v.customerId || "",
       color: v.color || "", notes: v.notes || "",
+      decodedVinData: v.decodedVinData,
       _editingId: v.id,
     });
     setView({ editing: v });
@@ -224,6 +228,7 @@ function VehiclesPage({ onToast }: { onToast?: (msg: string, type?: string) => v
       year: form.year, make: form.make, model: form.model,
       trim: form.trim, vin: form.vin, mileage: form.mileage,
       color: form.color, notes: form.notes,
+      decodedVinData: form.decodedVinData,
     };
     if (typeof view === "object" && "editing" in view) {
       await updateVehicle(view.editing.id, data);

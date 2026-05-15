@@ -5,6 +5,8 @@ import QuoteInfo from "./components/QuoteInfo";
 import JobsSection from "./components/JobsSection";
 import NotesSection from "./components/NotesSection";
 import ResultsSection from "./components/ResultsSection";
+import ShopSuppliesOverride from "./components/ShopSuppliesOverride";
+import type { SsOverride } from "./components/ShopSuppliesOverride";
 import DiscountSection from "./components/DiscountSection";
 import TasksPanel from "./components/TasksPanel";
 import Footer from "./components/Footer";
@@ -133,6 +135,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   const [mobilePanel, setMobilePanel] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
   const [discount, setDiscount] = useState(EMPTY_DISCOUNT);
+  const [ssOverride, setSsOverride] = useState<SsOverride>({ enabled: false, value: "" });
 
   const { toasts, toast, dismiss } = useToast();
 
@@ -198,9 +201,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
       return { id: job.id, name: job.name || `Job ${job.id}`, laborCost, laborHrs, partsTotal, subtotal };
     });
 
-    grandSsTotal = Math.min(grandSsTotal, rates.ssMax);
+    const autoSsTotal = Math.min(grandSsTotal, rates.ssMax);
+    const ssTotal = ssOverride.enabled ? (Number(ssOverride.value) || 0) : autoSsTotal;
 
-    const taxableAmount = grandPartsTotal + grandSsTotal;
+    const taxableAmount = grandPartsTotal + ssTotal;
     const taxTotal = taxableAmount * (rates.taxRate * 0.01);
 
     const discountValue = Number(discount.value) || 0;
@@ -214,10 +218,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
         discount.type === "percentage" ? base * (discountValue / 100) : Math.min(discountValue, base);
     }
 
-    const grandTotal = grandLaborCost + grandPartsTotal + grandSsTotal + taxTotal - discountAmount;
+    const grandTotal = grandLaborCost + grandPartsTotal + ssTotal + taxTotal - discountAmount;
 
-    return { jobSummaries, laborCost: grandLaborCost, laborHours: grandLaborHours, partsTotal: grandPartsTotal, ssTotal: grandSsTotal, taxTotal, discountAmount, discount, grandTotal };
-  }, [jobs, rates, discount]);
+    return { jobSummaries, laborCost: grandLaborCost, laborHours: grandLaborHours, partsTotal: grandPartsTotal, ssTotal, autoSsTotal, taxTotal, discountAmount, discount, grandTotal };
+  }, [jobs, rates, discount, ssOverride]);
 
   const refreshHistory = async () => {
     const h = await getHistoryIndex();
@@ -288,6 +292,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     setJobCounter(1);
     setJobs([EMPTY_JOB(1)]);
     setDiscount(EMPTY_DISCOUNT);
+    setSsOverride({ enabled: false, value: "" });
   };
 
   const buildQuoteData = () => ({
@@ -298,6 +303,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     vehicle,
     rates,
     discount,
+    ssOverride,
     jobs: jobs.map((j) => ({
       name: j.name,
       parts: j.parts.map((p) => ({
@@ -354,6 +360,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     setVehicle((quote.vehicle as typeof EMPTY_VEHICLE) || EMPTY_VEHICLE);
     if (quote.rates) setRates(quote.rates as GlobalRates);
     setDiscount((quote.discount as typeof EMPTY_DISCOUNT) || EMPTY_DISCOUNT);
+    setSsOverride((quote.ssOverride as SsOverride) || { enabled: false, value: "" });
     if (quote.jobs && (quote.jobs as unknown[]).length > 0) {
       const loaded = (quote.jobs as Array<Record<string, unknown>>).map((jobData, i) => ({
         id: i + 1,
@@ -596,6 +603,11 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                   {currentQuoteId ? `Update #${currentQuoteId}` : "Save Quote"}
                 </button>
               </div>
+              <ShopSuppliesOverride
+                override={ssOverride}
+                onChange={setSsOverride}
+                autoAmount={totals.autoSsTotal}
+              />
               <ResultsSection totals={totals} />
             </div>
           )}

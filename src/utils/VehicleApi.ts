@@ -8,11 +8,12 @@ import validateVin from "./validateVin";
  * Each method returns a Promise that resolves with the API response or rejects with an error if the input is invalid.
  */
 const baseUrl = "https://vpic.nhtsa.dot.gov/api/vehicles/";
+const recallUrl = "https://api.nhtsa.gov/";
 
 export type VehicleApiResponse<T> = Promise<{
   Count: number;
   Message: string;
-  SearchCriteria: string;
+  SearchCriteria?: string;
   Results: T[];
 }>;
 
@@ -35,6 +36,24 @@ export type DecodedVinResponse = {
   ValueId: string;
   Variable: string;
   VariableId: number;
+};
+
+export type RecallResponse = {
+  Manufacturer: string;
+  NHTSACampaignNumber: string;
+  parkIt: boolean;
+  parkOutSide: boolean;
+  overTheAirUpdate: boolean;
+  NHTSAActionNumber: string;
+  ReportReceivedDate: string;
+  Component: string;
+  Summary: string;
+  Consequence: string;
+  Remedy: string;
+  Notes: string;
+  ModelYear: string;
+  Make: string;
+  Model: string;
 };
 
 /**
@@ -294,9 +313,60 @@ const decodeVinValues = async ({
   ).then((r) => r.json());
 };
 
+/**
+ * 
+ * @param make - the make of the vehicle
+ * @param model - the model of the vehicle
+ * @param year - the modelYear of the vehicle
+ * @returns
+ * Object with formatting like:
+ * {
+  "Count": 2,
+  "Message": "Results returned successfully",
+  "results": [
+    {
+      "Manufacturer": "Honda (American Honda Motor Co.)",
+      "NHTSACampaignNumber": "19V182000",
+      "parkIt": false,
+      "parkOutSide": false,
+      "overTheAirUpdate": false,
+      "NHTSAActionNumber": "EA15001",
+      "ReportReceivedDate": "06/03/2019",
+      "Component": "AIR BAGS:FRONTAL:DRIVER SIDE:INFLATOR MODULE",
+      "Summary": "Honda (American Honda Motor Co.) is recalling specific 2003 Acura 3.2CL, 2013-2016 ILX, 2013-2014 ILX Hybrid, 2003-2006 MDX, 2007-2016 RDX, 2002-2003 3.2TL, 2004-2006, and 2009-2014 TL, 2010-2013 ZDX and 2001-2007 and 2009 Honda Accord, 2001-2005 Civic, 2003-2005 Civic Hybrid, 2001-2005 Civic GX NGV, 2002-2007 and 2010-2011 CR-V, 2003-2011 Element, 2007 Fit, 2002-2004 Odyssey, 2003-2008 Pilot, and 2006-2014 Ridgeline vehicles.  The affected vehicles received a replacement driver air bag inflator as part of a previous Takata inflator recall remedy or a replacement driver air bag module containing the same inflator type as a service part.  Due to a manufacturing error, in the event of a crash necessitating deployment of the driver frontal air bag, these inflators may explode.",
+      "Consequence": "An explosion of an inflator within the driver frontal air bag module may result in sharp metal fragments striking the driver, front seat passenger or other occupants resulting in serious injury or death.",
+      "Remedy": "Honda will notify owners, and dealers will replace the driver's air bag inflator with an alternate inflator, free of charge.  The recall began April 10, 2019.  Honda owners may contact customer service at 1-888-234-2138.  Honda's number for this recall is O41.  Acura owners may contact customer service at 1-888-234-2138.  Acura's number for this recall is U40.",
+      "Notes": "Owners may also contact the National Highway Traffic Safety Administration Vehicle Safety Hotline at 1-888-327-4236 (TTY 1-800-424-9153), or go to www.safercar.gov.",
+      "ModelYear": "2012",
+      "Make": "ACURA",
+      "Model": "RDX"
+    }...
+  ]
+} 
+ */
+
+const getRecallsByMakeModelYear = async ({
+  make,
+  model,
+  year,
+}: {
+  make: string;
+  model: string;
+  year: number;
+}): Promise<RecallResponse[]> => {
+  if (!make || !model || !year) {
+    return Promise.reject(new Error("Must provide make, model, and year"));
+  }
+  const url = `${recallUrl}recalls/recallsByVehicle?make=${make}&model=${model}&modelYear=${year}`;
+  return fetch(url)
+    .then((r) => r.json())
+    .then((data) => (data.results ?? []) as RecallResponse[]);
+};
+
 export const VehicleApi = {
   getMakes,
   getModels,
   decodeVin,
   decodeVinValues,
+  getRecallsByMakeModelYear,
 };

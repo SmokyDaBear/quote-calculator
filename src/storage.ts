@@ -269,6 +269,7 @@ export async function saveCustomerVehicle(
     mileage: data.mileage || '',
     color: data.color || '',
     notes: data.notes || '',
+    ...(data.decodedVinData ? { decodedVinData: data.decodedVinData } : {}),
     createdAt: Date.now(),
   };
   await dbPut('vehicles', vehicle);
@@ -298,6 +299,7 @@ export async function saveVehicle(data: Omit<Vehicle, 'id' | 'createdAt'>): Prom
     year: data.year || '', make: data.make || '', model: data.model || '',
     trim: data.trim || '', vin: data.vin || '', mileage: data.mileage || '',
     color: data.color || '', notes: data.notes || '',
+    ...(data.decodedVinData ? { decodedVinData: data.decodedVinData } : {}),
     createdAt: Date.now(),
   };
   await dbPut('vehicles', vehicle);

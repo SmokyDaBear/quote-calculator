@@ -6,6 +6,7 @@ type Totals = {
   laborHours: number;
   partsTotal: number;
   ssTotal: number;
+  autoSsTotal?: number;
   taxTotal: number;
   discountAmount: number;
   discount: Discount;
@@ -42,7 +43,12 @@ function ResultsSection({ totals }: { totals: Totals }) {
           <span>{fmt(totals.partsTotal)}</span>
         </div>
         <div className="total-row">
-          <span>Total Shop Supplies:</span>
+          <span>
+            Total Shop Supplies:
+            {totals.autoSsTotal != null && totals.ssTotal !== totals.autoSsTotal && (
+              <span className="ss-override-badge">override</span>
+            )}
+          </span>
           <span>{fmt(totals.ssTotal)}</span>
         </div>
         <div className="total-row">

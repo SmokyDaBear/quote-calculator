@@ -182,6 +182,9 @@ export interface BusinessInfo {
 
 // ── Vehicle ──────────────────────────────────────────────────────────────────
 
+/** Ordered pairs of [label, value] from a NHTSA VIN decode */
+export type DecodedVinData = Array<[string, string]>;
+
 export interface Vehicle {
   id: string;
   customerId: string;   // FK → Customer.id
@@ -193,5 +196,6 @@ export interface Vehicle {
   mileage: string;
   color: string;
   notes: string;
+  decodedVinData?: DecodedVinData;
   createdAt: number;
 }

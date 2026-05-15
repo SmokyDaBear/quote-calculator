@@ -5,10 +5,15 @@ import {
   saveCustomerVehicle,
   updateCustomerVehicle,
   deleteCustomerVehicle,
+  loadBusinessInfo,
 } from "../storage";
-import type { Vehicle } from "../types/index";
-import type { MakeResponse, ModelResponse } from "../utils/VehicleApi";
+import { printRecalls } from "../utils/printRecalls";
+import { linkifyForReact } from "../utils/linkifyRecall";
+import type { Vehicle, DecodedVinData } from "../types/index";
+import type { MakeResponse, ModelResponse, RecallResponse } from "../utils/VehicleApi";
 import { VehicleApi } from "../utils/VehicleApi";
+
+type RecallState = RecallResponse[] | null | "loading";
 
 const YEARS: number[] = Array.from(
   { length: 100 },
@@ -45,6 +50,54 @@ type DecodeResult = {
   details: [string, string][];
   warning: string;
 };
+
+function RecallSection({ recalls }: { recalls: RecallState }) {
+  if (!recalls) return null;
+  return (
+    <div className="vin-recalls">
+      <div className="vin-recalls-header">
+        <span>Recalls</span>
+        {Array.isArray(recalls) && (
+          <span className={`vin-recalls-badge${recalls.length > 0 ? " vin-recalls-badge--warn" : " vin-recalls-badge--ok"}`}>
+            {recalls.length === 0 ? "None found" : `${recalls.length} found`}
+          </span>
+        )}
+      </div>
+      {recalls === "loading" && (
+        <div className="vin-recalls-status">Checking for recalls…</div>
+      )}
+      {Array.isArray(recalls) && recalls.length === 0 && (
+        <div className="vin-recalls-status">No open recalls found for this vehicle.</div>
+      )}
+      {Array.isArray(recalls) && recalls.length > 0 && (
+        <div className="vin-recall-list">
+          {recalls.map((r) => (
+            <details key={r.NHTSACampaignNumber} className="vin-recall-item">
+              <summary className="vin-recall-summary">
+                <span className="vin-recall-num">#{r.NHTSACampaignNumber}</span>
+                {(r.parkIt || r.parkOutSide) && (
+                  <span className="vin-recall-urgent">
+                    {r.parkIt ? "PARK IT" : "PARK OUTSIDE"}
+                  </span>
+                )}
+                <span className="vin-recall-component">{r.Component}</span>
+              </summary>
+              <div className="vin-recall-body">
+                {r.ReportReceivedDate && (
+                  <p className="vin-recall-date">Reported: {r.ReportReceivedDate}</p>
+                )}
+                {r.Summary && <p><strong>Summary:</strong> {linkifyForReact(r.Summary)}</p>}
+                {r.Consequence && <p><strong>Consequence:</strong> {linkifyForReact(r.Consequence)}</p>}
+                {r.Remedy && <p><strong>Remedy:</strong> {linkifyForReact(r.Remedy)}</p>}
+                {r.Notes && <p><strong>Notes:</strong> {linkifyForReact(r.Notes)}</p>}
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export type VehicleFields = {
   year: string;
@@ -100,20 +153,42 @@ function DecodeDialog({
   );
 }
 
+function VinDataTable({ data }: { data: DecodedVinData }) {
+  if (!data.length) return null;
+  return (
+    <table className="vin-table vin-table--inline">
+      <tbody>
+        {data.map(([label, value]) => (
+          <tr key={label}>
+            <td className="vin-table-label">{label}</td>
+            <td className="vin-table-value">{value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 // ── Shared vehicle form fields with API dropdowns + VIN decode ─────────────────
 
 export function VehicleFormFields({
   vehicle,
   onChange,
+  decodedVinData,
+  onDecodedData,
 }: {
   vehicle: VehicleFields;
   onChange: (v: VehicleFields) => void;
+  decodedVinData?: DecodedVinData;
+  onDecodedData?: (data: DecodedVinData) => void;
 }) {
   const [rawMakes, setRawMakes] = useState<MakesCache>(_makesCache);
   const [rawModels, setRawModels] = useState<ModelResponse[] | null>(null);
   const [decoding, setDecoding] = useState(false);
   const [decodeError, setDecodeError] = useState("");
   const [decodeResult, setDecodeResult] = useState<DecodeResult | null>(null);
+  const [recalls, setRecalls] = useState<RecallState>(null);
+  const [checkingRecalls, setCheckingRecalls] = useState(false);
 
   useEffect(() => {
     if (!vehicle.year) return;
@@ -154,8 +229,37 @@ export function VehicleFormFields({
     );
   }, [rawModels]);
 
+  useEffect(() => {
+    setRecalls(null);
+  }, [vehicle.year, vehicle.make, vehicle.model]);
+
   const set = (field: string, value: string) =>
     onChange({ ...vehicle, [field]: value });
+
+  const handleCheckRecalls = async () => {
+    const year = parseInt(vehicle.year, 10);
+    if (!vehicle.make || !vehicle.model || !year) return;
+    setCheckingRecalls(true);
+    setRecalls("loading");
+    try {
+      const results = await VehicleApi.getRecallsByMakeModelYear({
+        make: vehicle.make,
+        model: vehicle.model,
+        year,
+      });
+      setRecalls(results);
+    } catch {
+      setRecalls([]);
+    } finally {
+      setCheckingRecalls(false);
+    }
+  };
+
+  const handlePrintRecalls = async () => {
+    if (!Array.isArray(recalls) || recalls.length === 0) return;
+    const biz = await loadBusinessInfo();
+    printRecalls({ recalls, vehicle, businessInfo: biz });
+  };
 
   const handleDecodeVin = async () => {
     const vin = vehicle.vin.trim().toUpperCase();
@@ -202,6 +306,7 @@ export function VehicleFormFields({
         ([label, field]) => [label, get(field)] as [string, string],
       ).filter(([, v]) => v);
       setDecodeResult({ vin, details, warning });
+      onDecodedData?.(details);
     } catch {
       setDecodeError("Failed to reach NHTSA API. Check your connection.");
     } finally {
@@ -344,6 +449,39 @@ export function VehicleFormFields({
           {decodeError && <span className="vin-error">{decodeError}</span>}
         </div>
       </div>
+      {decodedVinData && decodedVinData.length > 0 && (
+        <div className="vin-stored-data">
+          <span className="vin-stored-header">Decoded VIN Data</span>
+          <VinDataTable data={decodedVinData} />
+        </div>
+      )}
+      {vehicle.year && vehicle.make && vehicle.model && (
+        <div className="vin-recalls-row">
+          <button
+            type="button"
+            className="btn-small btn-secondary"
+            onClick={handleCheckRecalls}
+            disabled={checkingRecalls}
+          >
+            {checkingRecalls ? "Checking…" : "Check Recalls"}
+          </button>
+          {Array.isArray(recalls) && (
+            <span className={`vin-recalls-inline-badge${recalls.length > 0 ? " vin-recalls-badge--warn" : " vin-recalls-badge--ok"}`}>
+              {recalls.length === 0 ? "No recalls" : `${recalls.length} recall${recalls.length !== 1 ? "s" : ""} found`}
+            </span>
+          )}
+          {Array.isArray(recalls) && recalls.length > 0 && (
+            <button
+              type="button"
+              className="btn-small"
+              onClick={handlePrintRecalls}
+            >
+              Print Recalls
+            </button>
+          )}
+        </div>
+      )}
+      <RecallSection recalls={recalls} />
       {decodeResult && (
         <DecodeDialog
           result={decodeResult}
@@ -367,12 +505,16 @@ function VehiclePickerStrip({
   onChange,
   selectedId,
   onSelectId,
+  decodedVinData,
+  onDecodedVinData,
 }: {
   customerId: string;
   vehicle: VehicleFields;
   onChange: (v: VehicleFields) => void;
   selectedId: string | null;
   onSelectId: (id: string | null) => void;
+  decodedVinData?: DecodedVinData;
+  onDecodedVinData?: (data: DecodedVinData | undefined) => void;
 }) {
   const [saved, setSaved] = useState<Vehicle[]>([]);
 
@@ -393,6 +535,7 @@ function VehiclePickerStrip({
       mileage: v.mileage,
     });
     onSelectId(v.id);
+    onDecodedVinData?.(v.decodedVinData);
   };
 
   const handleDelete = async (e: React.MouseEvent, v: Vehicle) => {
@@ -407,12 +550,13 @@ function VehiclePickerStrip({
     const hasData = vehicle.year || vehicle.make || vehicle.model;
     if (!hasData) return;
     if (selectedId) {
-      await updateCustomerVehicle(customerId, selectedId, vehicle);
+      await updateCustomerVehicle(customerId, selectedId, { ...vehicle, decodedVinData });
     } else {
       const created = await saveCustomerVehicle(customerId, {
         ...vehicle,
         color: "",
         notes: "",
+        decodedVinData,
       });
       onSelectId(created.id);
     }
@@ -476,6 +620,7 @@ function VehicleSection({
   customerId: string | null;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [decodedVinData, setDecodedVinData] = useState<DecodedVinData | undefined>();
 
   const hasData =
     vehicle.year || vehicle.make || vehicle.model ||
@@ -484,6 +629,7 @@ function VehicleSection({
   const handleClear = () => {
     onChange(EMPTY_VEHICLE_FIELDS);
     setSelectedId(null);
+    setDecodedVinData(undefined);
   };
 
   return (
@@ -507,9 +653,16 @@ function VehicleSection({
           onChange={onChange}
           selectedId={selectedId}
           onSelectId={setSelectedId}
+          decodedVinData={decodedVinData}
+          onDecodedVinData={setDecodedVinData}
         />
       )}
-      <VehicleFormFields vehicle={vehicle} onChange={onChange} />
+      <VehicleFormFields
+        vehicle={vehicle}
+        onChange={onChange}
+        decodedVinData={decodedVinData}
+        onDecodedData={setDecodedVinData}
+      />
     </div>
   );
 }
