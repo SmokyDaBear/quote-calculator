@@ -113,6 +113,10 @@ export interface WorkingJob {
   laborCost: string;
   description: string;
   priceAtList?: boolean;
+  warrantyPolicyId?: string;
+  warrantyPolicyName?: string;
+  warrantyDateBilled?: string;
+  warrantyMileage?: string;
 }
 
 // ── Quote ────────────────────────────────────────────────────────────────────
@@ -178,6 +182,28 @@ export interface BusinessInfo {
   address: string;
   logo: string;
   printMessage?: string;
+}
+
+// ── Warranty Policies ────────────────────────────────────────────────────────
+
+export interface WarrantyTier {
+  id: string;
+  label: string;
+  maxMonths: number | null;
+  maxMiles: number | null;
+  partsPct: number;    // warranty % for parts cost
+  laborPct: number;    // warranty % for labor cost
+}
+
+export interface WarrantyPolicy {
+  id: string;
+  label: string;
+  category: string;         // maps to LibraryPart.category for auto-selection
+  subcategory: string[];    // empty = match any subcategory; otherwise match any listed
+  tiers: WarrantyTier[];
+  swapMaxMonths: number | null;
+  billOutMultiplier: number;
+  billOutMaxMonths: number | null;
 }
 
 // ── Vehicle ──────────────────────────────────────────────────────────────────

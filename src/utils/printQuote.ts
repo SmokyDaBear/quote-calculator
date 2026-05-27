@@ -6,7 +6,16 @@ const ACCENT = "#1b3127";
 const fmt = (n: number) => `$${Number(n).toFixed(2)}`;
 
 type PrintPart = { partNumber?: string; name?: string; price?: number | string; quantity?: number; isEstimate?: boolean };
-type PrintJobSummary = { id: number; laborCost: number; laborHrs: number; subtotal: number };
+type PrintJobSummary = {
+  id: number;
+  laborCost: number;
+  laborHrs: number;
+  subtotal: number;
+  warrantyPartsAmount?: number;
+  warrantyLaborAmount?: number;
+  warrantyPolicyName?: string;
+  warrantyTierLabel?: string;
+};
 type PrintTotals = {
   jobSummaries: PrintJobSummary[];
   laborCost: number;
@@ -14,6 +23,7 @@ type PrintTotals = {
   ssTotal: number;
   taxTotal: number;
   discountAmount: number;
+  warrantyTotal?: number;
   grandTotal: number;
   discount?: { type?: string; value?: string; appliesTo?: string };
 };
@@ -57,10 +67,20 @@ function jobsHTML(jobs: PrintJob[], totals: PrintTotals): string {
         (s?.laborCost ?? 0) > 0 ?
           `<span>Labor${(s?.laborHrs ?? 0) > 0 ? ` (${s!.laborHrs} hrs)` : ""}: ${fmt(s!.laborCost)}</span>`
         : "";
+      const warrantyCovered = (s?.warrantyPartsAmount ?? 0) + (s?.warrantyLaborAmount ?? 0);
+      const warrantyLine = (warrantyCovered > 0 && s?.warrantyPolicyName)
+        ? `<div class="warranty-info">
+            <span class="warranty-label">Warranty:</span>
+            <span class="warranty-policy">${s.warrantyPolicyName}</span>
+            ${s.warrantyTierLabel ? `<span class="warranty-sep">—</span><span class="warranty-tier">${s.warrantyTierLabel}</span>` : ""}
+            <span class="warranty-covered">Covers ${fmt(warrantyCovered)}</span>
+          </div>`
+        : "";
       return `<div class="job">
       <div class="job-title">${job.name || `Job ${i + 1}`}</div>
       ${job.description ? `<div class="job-desc">${job.description}</div>` : ""}
       ${partsTableHTML(job.parts)}
+      ${warrantyLine}
       <div class="job-meta">
         ${laborLine}
         <span class="job-sub">Subtotal: ${fmt(s?.subtotal ?? 0)}</span>
@@ -95,9 +115,14 @@ function totalsHTML(totals: PrintTotals, rates: GlobalRates): string {
       })()
     : "";
 
+  const warrantyRow = (totals.warrantyTotal ?? 0) > 0
+    ? `<tr><td class="tl warranty-lbl">Warranty Coverage</td><td class="warranty-val">−${fmt(totals.warrantyTotal!)}</td></tr>`
+    : "";
+
   return `<table class="totals">
     ${rowsHTML}
     ${discountRow}
+    ${warrantyRow}
     <tr class="grand"><td>Grand Total</td><td>${fmt(totals.grandTotal)}</td></tr>
   </table>`;
 }
@@ -250,6 +275,13 @@ hr{border:none;border-top:1px solid #ddd;margin:14px 0}
 .totals td:last-child{text-align:right;font-weight:bold}
 .tl{color:#555;font-weight:normal}
 .disc-lbl{color:#c0392b;font-weight:normal}.disc-val{color:#c0392b}
+.warranty-info{font-size:9pt;color:${ACCENT};background:#f0fdf4;border-radius:3px;padding:4px 8px;margin:4px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.warranty-label{font-size:8pt;font-weight:bold;text-transform:uppercase;letter-spacing:.4px;color:#6b7280}
+.warranty-policy{font-weight:bold;color:${ACCENT}}
+.warranty-sep{color:#9ca3af}
+.warranty-tier{color:#555;font-style:italic}
+.warranty-covered{font-weight:bold;color:${ACCENT};margin-left:auto}
+.warranty-lbl{color:${ACCENT};font-weight:normal}.warranty-val{color:${ACCENT}}
 .grand td{border-top:2px solid #222;border-bottom:2px solid #222;background:#fff;color:#222;font-size:11pt;font-weight:bold;padding:6px 8px}
 
 .print-footer{margin-top:auto;padding-top:18px;border-top:1px solid #ddd}

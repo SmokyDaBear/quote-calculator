@@ -12,6 +12,7 @@ import type {
   QuoteIndexEntry,
   MarkupBracket,
   EstimatedPriceMap,
+  WarrantyPolicy,
 } from './types/index';
 
 // ── Rates ────────────────────────────────────────────────────────────────────
@@ -456,6 +457,43 @@ export async function getEstimatedPriceMap(): Promise<EstimatedPriceMap> {
 
 export async function saveEstimatedPriceMap(map: EstimatedPriceMap): Promise<void> {
   await settingsPut('estimatedPriceMap', map);
+}
+
+// ── Warranty Policies ─────────────────────────────────────────────────────────
+
+export const DEFAULT_WARRANTY_POLICIES: WarrantyPolicy[] = [
+  {
+    id: "default-batteries",
+    label: "Batteries",
+    category: "Electrical",
+    subcategory: ["Batteries (Lead-Acid)", "Batteries (Lithium-Ion)", "Batteries (AGM)"],
+    swapMaxMonths: 18,
+    billOutMultiplier: 1.735,
+    billOutMaxMonths: 24,
+    tiers: [
+      { id: "bat-t1", label: "SWAP",         maxMonths: 18, maxMiles: null, partsPct: 100, laborPct: 0 },
+      { id: "bat-t2", label: "Bill Out",     maxMonths: 24, maxMiles: null, partsPct: 100, laborPct: 0 },
+      { id: "bat-t3", label: "75% Warranty", maxMonths: 32, maxMiles: null, partsPct: 75,  laborPct: 0 },
+      { id: "bat-t4", label: "50% Warranty", maxMonths: 50, maxMiles: null, partsPct: 50,  laborPct: 0 },
+      { id: "bat-t5", label: "25% Warranty", maxMonths: 84, maxMiles: null, partsPct: 25,  laborPct: 0 },
+    ],
+  },
+];
+
+export async function getWarrantyPolicies(): Promise<WarrantyPolicy[]> {
+  const saved = await settingsGet<WarrantyPolicy[]>('warrantyPolicies');
+  if (!saved) return DEFAULT_WARRANTY_POLICIES;
+  // Migrate: old data had subcategory as a string
+  return saved.map((p) => ({
+    ...p,
+    subcategory: Array.isArray(p.subcategory)
+      ? p.subcategory
+      : p.subcategory ? [p.subcategory as unknown as string] : [],
+  }));
+}
+
+export async function saveWarrantyPolicies(policies: WarrantyPolicy[]): Promise<void> {
+  await settingsPut('warrantyPolicies', policies);
 }
 
 // ── Accent ────────────────────────────────────────────────────────────────────

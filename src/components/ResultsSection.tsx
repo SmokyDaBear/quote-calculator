@@ -10,6 +10,7 @@ type Totals = {
   taxTotal: number;
   discountAmount: number;
   discount: Discount;
+  warrantyTotal?: number;
   grandTotal: number;
 };
 
@@ -65,6 +66,12 @@ function ResultsSection({ totals }: { totals: Totals }) {
               :
             </span>
             <span>−{fmt(totals.discountAmount)}</span>
+          </div>
+        )}
+        {(totals.warrantyTotal ?? 0) > 0 && (
+          <div className="total-row warranty-row">
+            <span>Warranty Coverage:</span>
+            <span>−{fmt(totals.warrantyTotal!)}</span>
           </div>
         )}
         <div className="total-row grand-total">

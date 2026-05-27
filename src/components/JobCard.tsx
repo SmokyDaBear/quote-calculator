@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { getPartsLibrary } from "../storage";
+import { getPartsLibrary, getWarrantyPolicies } from "../storage";
+import { calculateProration } from "../utils/proration";
 import { EditIcon } from "../icons";
 import PartRow from "./PartRow";
 import SaveToInventoryModal from "./SaveToInventoryModal";
-import type { LibraryPart, WorkingJob, WorkingPart } from "../types/index";
+import type { LibraryPart, WorkingJob, WorkingPart, WarrantyPolicy } from "../types/index";
 
 function JobCard({
   job,
@@ -21,11 +22,20 @@ function JobCard({
   isBlank: boolean;
 }) {
   const [library, setLibrary] = useState<LibraryPart[]>([]);
-  const [saveToInvIdx, setSaveToInvIdx] = useState<number | null>(null);
+  const [saveInvSnap, setSaveInvSnap] = useState<{ idx: number; data: { partNumber?: string; name?: string; price?: string; cost?: string; msrp?: string } } | null>(null);
+  const openSaveToInv = (idx: number) => {
+    const p = job.parts[idx];
+    if (!p) return;
+    setSaveInvSnap({ idx, data: { partNumber: p.partNumber, name: p.name, price: p.price, cost: p.cost, msrp: p.msrp } });
+  };
+  const [warrantyPolicies, setWarrantyPolicies] = useState<WarrantyPolicy[]>([]);
+  const [warrantyOpen, setWarrantyOpen] = useState(!!job.warrantyPolicyId);
 
   useEffect(() => {
     getPartsLibrary().then(setLibrary);
+    getWarrantyPolicies().then(setWarrantyPolicies);
   }, []);
+
   const [isEditing, setIsEditing] = useState(!!isBlank);
 
   const addPart = () => {
@@ -69,6 +79,30 @@ function JobCard({
   const hasEstimates = job.parts.some((p) => p.isEstimate);
   const laborCost = Number(job.laborCost) || 0;
   const laborHrs = Number(job.laborHrs) || 0;
+
+  // Warranty helpers
+  const selectedWarrantyPolicy = warrantyPolicies.find((p) => p.id === job.warrantyPolicyId) ?? null;
+  const hasMileageTiers = selectedWarrantyPolicy?.tiers.some((t) => t.maxMiles !== null) ?? false;
+  const warrantyResult =
+    selectedWarrantyPolicy && job.warrantyDateBilled
+      ? calculateProration(
+          selectedWarrantyPolicy,
+          job.warrantyDateBilled,
+          partsTotal,
+          partsTotal,
+          laborCost,
+          laborCost,
+          job.warrantyMileage ? parseFloat(job.warrantyMileage) : undefined,
+        )
+      : null;
+
+  const clearWarranty = () => {
+    setWarrantyOpen(false);
+    onUpdate(job.id, "warrantyPolicyId", undefined);
+    onUpdate(job.id, "warrantyPolicyName", undefined);
+    onUpdate(job.id, "warrantyDateBilled", undefined);
+    onUpdate(job.id, "warrantyMileage", undefined);
+  };
 
   if (!isEditing) {
     return (
@@ -116,6 +150,11 @@ function JobCard({
         </div>
         {job.description && (
           <div className="job-card-collapsed-desc">{job.description}</div>
+        )}
+        {job.warrantyPolicyName && (
+          <div className="job-warranty-badge-row">
+            <span className="job-warranty-badge">Warranty: {job.warrantyPolicyName}</span>
+          </div>
         )}
       </div>
     );
@@ -218,7 +257,7 @@ function JobCard({
                 onReplace={replacePart}
                 onRemove={removePart}
                 priceAtList={job.priceAtList || false}
-                onSaveToInventory={() => setSaveToInvIdx(idx)}
+                onSaveToInventory={() => openSaveToInv(idx)}
               />
             ))}
             <div className="parts-total-row">
@@ -239,13 +278,108 @@ function JobCard({
         />
       </div>
 
-      {saveToInvIdx !== null && (
+      {/* Warranty Section */}
+      <div className="job-warranty-wrap">
+        {!warrantyOpen ? (
+          <button
+            type="button"
+            className="btn-small btn-secondary job-warranty-add-btn"
+            onClick={() => setWarrantyOpen(true)}
+          >
+            + Apply Warranty
+          </button>
+        ) : (
+          <div className="job-warranty-section">
+            <div className="job-warranty-header">
+              <span className="job-warranty-title">Warranty Coverage</span>
+              <button
+                type="button"
+                className="btn-remove"
+                onClick={clearWarranty}
+                title="Remove warranty"
+              >
+                ×
+              </button>
+            </div>
+            <div className="job-warranty-fields">
+              <div className="job-warranty-field">
+                <label>Warranty Policy</label>
+                <select
+                  aria-label="Warranty policy"
+                  value={job.warrantyPolicyId ?? ""}
+                  onChange={(e) => {
+                    const policy = warrantyPolicies.find((p) => p.id === e.target.value);
+                    onUpdate(job.id, "warrantyPolicyId", e.target.value || undefined);
+                    onUpdate(job.id, "warrantyPolicyName", policy?.label ?? undefined);
+                  }}
+                >
+                  <option value="">— Select Policy —</option>
+                  {warrantyPolicies.map((p) => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="job-warranty-field">
+                <label>Install Date</label>
+                <input
+                  type="date"
+                  aria-label="Install date"
+                  value={job.warrantyDateBilled ?? ""}
+                  max={new Date().toISOString().split("T")[0]}
+                  onChange={(e) => onUpdate(job.id, "warrantyDateBilled", e.target.value || undefined)}
+                />
+              </div>
+              {hasMileageTiers && (
+                <div className="job-warranty-field">
+                  <label>Current Mileage</label>
+                  <input
+                    type="number"
+                    aria-label="Current mileage"
+                    min="0"
+                    placeholder="e.g. 45000"
+                    value={job.warrantyMileage ?? ""}
+                    onChange={(e) => onUpdate(job.id, "warrantyMileage", e.target.value || undefined)}
+                  />
+                </div>
+              )}
+            </div>
+            {warrantyResult && (
+              <div className="job-warranty-preview">
+                {warrantyResult.tier === null && !warrantyResult.isSwap ? (
+                  <span className="job-warranty-preview-none">Out of warranty — no coverage applies.</span>
+                ) : (
+                  <>
+                    <span className="job-warranty-preview-policy">{selectedWarrantyPolicy?.label}</span>
+                    {" — "}
+                    <span className="job-warranty-preview-tier">
+                      {warrantyResult.isSwap ? "Swap Period" : warrantyResult.tier?.label}
+                    </span>
+                    <div className="job-warranty-preview-amounts">
+                      {warrantyResult.warrantyPaysCost > 0 && (
+                        <span>Parts: <strong>${warrantyResult.warrantyPaysCost.toFixed(2)} covered</strong></span>
+                      )}
+                      {warrantyResult.warrantyPaysLaborCost > 0 && (
+                        <span>Labor: <strong>${warrantyResult.warrantyPaysLaborCost.toFixed(2)} covered</strong></span>
+                      )}
+                      {warrantyResult.warrantyPaysCost === 0 && warrantyResult.warrantyPaysLaborCost === 0 && (
+                        <span className="job-warranty-preview-none">No coverage at current percentages.</span>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {saveInvSnap !== null && (
         <SaveToInventoryModal
-          initialData={job.parts[saveToInvIdx] ?? {}}
+          initialData={saveInvSnap.data}
           onSaved={(saved) => {
-            const p = job.parts[saveToInvIdx];
+            const p = job.parts[saveInvSnap.idx];
             if (p) {
-              replacePart(saveToInvIdx, {
+              replacePart(saveInvSnap.idx, {
                 partNumber: saved.partNumber || p.partNumber,
                 name: saved.name,
                 cost: saved.cost ? saved.cost.toString() : undefined,
@@ -253,9 +387,9 @@ function JobCard({
               });
             }
             setLibrary((prev) => [...prev, saved]);
-            setSaveToInvIdx(null);
+            setSaveInvSnap(null);
           }}
-          onCancel={() => setSaveToInvIdx(null)}
+          onCancel={() => setSaveInvSnap(null)}
         />
       )}
 

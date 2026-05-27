@@ -9,6 +9,7 @@ import {
   getVendors,
   getPartsLibrary,
   getJobTemplates,
+  getWarrantyPolicies,
 } from "../storage";
 import { dbPut, dbClear, settingsPut } from "../db/index";
 
@@ -26,6 +27,7 @@ export async function downloadBackup(): Promise<void> {
     rates,
     estimatedPriceMap,
     accent,
+    warrantyPolicies,
     customers,
     vehicles,
     vendors,
@@ -36,6 +38,7 @@ export async function downloadBackup(): Promise<void> {
     loadGlobalRates(),
     getEstimatedPriceMap(),
     loadAccent(),
+    getWarrantyPolicies(),
     getCustomers(),
     getAllVehicles(),
     getVendors(),
@@ -66,6 +69,7 @@ export async function downloadBackup(): Promise<void> {
     "settings/rates.json": toJson(rates),
     "settings/estimated-price-map.json": toJson(estimatedPriceMap),
     "settings/theme.json": toJson(theme),
+    "settings/warranty-policies.json": toJson(warrantyPolicies),
     "data/customers.json": toJson(customers),
     "data/vehicles.json": toJson(vehicles),
     "data/vendors.json": toJson(vendors),
@@ -127,6 +131,9 @@ export async function restoreBackup(file: File): Promise<RestoreCounts> {
 
   const estimatedPriceMap = parse<Record<string, unknown>>("settings/estimated-price-map.json");
   if (estimatedPriceMap) await settingsPut("estimatedPriceMap", estimatedPriceMap);
+
+  const warrantyPolicies = parse<unknown[]>("settings/warranty-policies.json");
+  if (warrantyPolicies) await settingsPut("warrantyPolicies", warrantyPolicies);
 
   const theme = parse<{ mode?: string; accent?: string }>("settings/theme.json");
   if (theme) {

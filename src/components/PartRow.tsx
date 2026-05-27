@@ -65,9 +65,14 @@ function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtLis
   const extended = (Number(part.price) || 0) * (Number(part.quantity) || 0);
 
   const trimmedName = part.name.trim();
+  const trimmedPartNumber = part.partNumber.trim();
   const isInLibrary =
     trimmedName !== "" &&
-    library.some((l) => l.name.toLowerCase() === trimmedName.toLowerCase());
+    library.some(
+      (l) =>
+        l.name.toLowerCase() === trimmedName.toLowerCase() &&
+        (trimmedPartNumber === "" || l.partNumber === "" || l.partNumber === trimmedPartNumber),
+    );
   const showSaveHint =
     trimmedName !== "" && !part.isEstimate && !isInLibrary && !!onSaveToInventory;
 

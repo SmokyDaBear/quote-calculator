@@ -16,6 +16,7 @@ import SettingsPage from "./components/SettingsPage";
 import CustomersPage from "./components/CustomersPage";
 import VendorsPage from "./components/VendorsPage";
 import VehiclesPage from "./components/VehiclesPage";
+import ToolsPage from "./components/ToolsPage";
 import VehicleSection from "./components/VehicleSection";
 import ServiceRecommendations from "./components/ServiceRecommendations";
 import QuickJobs from "./components/QuickJobs";
@@ -30,6 +31,7 @@ import {
   IconCustomers,
   IconVendors,
   IconVehicles,
+  IconTools,
   PrintIcon,
   SaveIcon,
 } from "./icons";
@@ -51,8 +53,10 @@ import {
   saveBusinessInfo,
   saveAccent,
   getPartsLibrary,
+  getWarrantyPolicies,
 } from "./storage";
-import type { GlobalRates, BusinessInfo, QuoteIndexEntry, JobTemplate, WorkingJob, WorkingPart, TemplatePart_Specific, Customer } from "./types/index";
+import { calculateProration } from "./utils/proration";
+import type { GlobalRates, BusinessInfo, QuoteIndexEntry, JobTemplate, WorkingJob, WorkingPart, TemplatePart_Specific, Customer, WarrantyPolicy } from "./types/index";
 import { ACCENT_PRESETS } from "./utils/accentPresets";
 import { About } from "./components/About";
 import WelcomeModal, { WELCOME_KEY, WELCOME_VERSION } from "./components/WelcomeModal";
@@ -94,6 +98,7 @@ const NAV_TABS = [
   { id: "customers", label: "Customers",      icon: <IconCustomers /> },
   { id: "vehicles",  label: "Vehicles",       icon: <IconVehicles /> },
   { id: "vendors",   label: "Vendors",        icon: <IconVendors /> },
+  { id: "tools",     label: "Tools",          icon: <IconTools /> },
   { id: "settings",  label: "Settings",       icon: <IconSettings /> },
 ];
 
@@ -104,7 +109,7 @@ const EMPTY_DISCOUNT: DiscountState = { type: "percentage", value: "", appliesTo
 function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   const [dbReady, setDbReady] = useState(false);
   const [activeView, setActiveView] = useState("quote");
-  const [jobs, setJobs] = useState([EMPTY_JOB(1)]);
+  const [jobs, setJobs] = useState<WorkingJob[]>([EMPTY_JOB(1)]);
   const [jobCounter, setJobCounter] = useState(1);
   const [rates, setRates] = useState<GlobalRates>(DEFAULT_RATES);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(BIZ_DEFAULTS);
@@ -136,6 +141,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   const [navOpen, setNavOpen] = useState(false);
   const [discount, setDiscount] = useState(EMPTY_DISCOUNT);
   const [ssOverride, setSsOverride] = useState<SsOverride>({ enabled: false, value: "" });
+  const [warrantyPolicies, setWarrantyPolicies] = useState<WarrantyPolicy[]>([]);
 
   const { toasts, toast, dismiss } = useToast();
 
@@ -146,11 +152,13 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
       loadBusinessInfo(),
       getCurrentQuoteNumber(),
       getHistoryIndex(),
-    ]).then(([r, biz, qNum, hist]) => {
+      getWarrantyPolicies(),
+    ]).then(([r, biz, qNum, hist, wPolicies]) => {
       setRates(r);
       setBusinessInfo(biz);
       setQuoteNumber(qNum);
       setHistory(hist);
+      setWarrantyPolicies(wPolicies);
       setDbReady(true);
       if (legacyMigrated) {
         toast(
@@ -183,6 +191,8 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     let grandLaborHours = 0;
     let grandPartsTotal = 0;
     let grandSsTotal = 0;
+    let grandWarrantyTotal = 0;
+    let grandWarrantyPartsTotal = 0;
 
     const jobSummaries = jobs.map((job) => {
       const partsTotal = job.parts.reduce(
@@ -198,13 +208,33 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
       grandPartsTotal += partsTotal;
       grandSsTotal += rates.ssRate * 0.01 * laborCost;
 
-      return { id: job.id, name: job.name || `Job ${job.id}`, laborCost, laborHrs, partsTotal, subtotal };
+      let warrantyPartsAmount = 0;
+      let warrantyLaborAmount = 0;
+      let warrantyTierLabel = "";
+      let warrantyPolicyName = job.warrantyPolicyName ?? "";
+
+      if (job.warrantyPolicyId && job.warrantyDateBilled && warrantyPolicies.length > 0) {
+        const policy = warrantyPolicies.find((p) => p.id === job.warrantyPolicyId);
+        if (policy) {
+          const milesNum = job.warrantyMileage ? parseFloat(job.warrantyMileage) : undefined;
+          const result = calculateProration(policy, job.warrantyDateBilled, partsTotal, partsTotal, laborCost, laborCost, milesNum);
+          warrantyPartsAmount = result.warrantyPaysCost;
+          warrantyLaborAmount = result.warrantyPaysLaborCost;
+          warrantyTierLabel = result.isSwap ? "Swap Period" : (result.tier?.label ?? "");
+          warrantyPolicyName = policy.label;
+        }
+      }
+
+      grandWarrantyTotal += warrantyPartsAmount + warrantyLaborAmount;
+      grandWarrantyPartsTotal += warrantyPartsAmount;
+
+      return { id: job.id, name: job.name || `Job ${job.id}`, laborCost, laborHrs, partsTotal, subtotal, warrantyPartsAmount, warrantyLaborAmount, warrantyPolicyName, warrantyTierLabel };
     });
 
     const autoSsTotal = Math.min(grandSsTotal, rates.ssMax);
     const ssTotal = ssOverride.enabled ? (Number(ssOverride.value) || 0) : autoSsTotal;
 
-    const taxableAmount = grandPartsTotal + ssTotal;
+    const taxableAmount = (grandPartsTotal - grandWarrantyPartsTotal) + ssTotal;
     const taxTotal = taxableAmount * (rates.taxRate * 0.01);
 
     const discountValue = Number(discount.value) || 0;
@@ -218,10 +248,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
         discount.type === "percentage" ? base * (discountValue / 100) : Math.min(discountValue, base);
     }
 
-    const grandTotal = grandLaborCost + grandPartsTotal + ssTotal + taxTotal - discountAmount;
+    const grandTotal = grandLaborCost + grandPartsTotal + ssTotal + taxTotal - discountAmount - grandWarrantyTotal;
 
-    return { jobSummaries, laborCost: grandLaborCost, laborHours: grandLaborHours, partsTotal: grandPartsTotal, ssTotal, autoSsTotal, taxTotal, discountAmount, discount, grandTotal };
-  }, [jobs, rates, discount, ssOverride]);
+    return { jobSummaries, laborCost: grandLaborCost, laborHours: grandLaborHours, partsTotal: grandPartsTotal, ssTotal, autoSsTotal, taxTotal, discountAmount, discount, warrantyTotal: grandWarrantyTotal, grandTotal };
+  }, [jobs, rates, discount, ssOverride, warrantyPolicies]);
 
   const refreshHistory = async () => {
     const h = await getHistoryIndex();
@@ -318,6 +348,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
       laborCost: Number(j.laborCost) || 0,
       description: j.description,
       priceAtList: j.priceAtList,
+      warrantyPolicyId: j.warrantyPolicyId,
+      warrantyPolicyName: j.warrantyPolicyName,
+      warrantyDateBilled: j.warrantyDateBilled,
+      warrantyMileage: j.warrantyMileage,
     })),
     grandTotal: totals.grandTotal,
   });
@@ -370,6 +404,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
         laborCost: (jobData.laborCost as string)?.toString() || "",
         description: (jobData.description as string) || "",
         priceAtList: (jobData.priceAtList as boolean) || false,
+        warrantyPolicyId: (jobData.warrantyPolicyId as string) || undefined,
+        warrantyPolicyName: (jobData.warrantyPolicyName as string) || undefined,
+        warrantyDateBilled: (jobData.warrantyDateBilled as string) || undefined,
+        warrantyMileage: (jobData.warrantyMileage as string) || undefined,
       }));
       setJobs(loaded);
       setJobCounter(loaded.length);
@@ -624,6 +662,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
           {activeView === "customers" && <CustomersPage onToast={toast} />}
           {activeView === "vehicles" && <VehiclesPage onToast={toast} />}
           {activeView === "vendors" && <VendorsPage onToast={toast} />}
+          {activeView === "tools" && <ToolsPage />}
           {activeView === "about" && <About />}
           {activeView === "settings" && (
             <SettingsPage
