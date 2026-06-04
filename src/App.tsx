@@ -48,7 +48,10 @@ import {
   saveAccent,
   getWarrantyPolicies,
   getCurrentQuoteNumber,
+  loadCustomTheme,
+  saveCustomTheme,
 } from "./storage";
+import type { CustomTheme } from "./utils/customTheme";
 import type {
   GlobalRates,
   BusinessInfo,
@@ -107,6 +110,9 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   });
   const [accent, setAccent] = useState(
     () => localStorage.getItem(ACCENT_KEY) ?? "green",
+  );
+  const [customTheme, setCustomTheme] = useState<CustomTheme | null>(
+    () => loadCustomTheme(),
   );
   const [showWelcome, setShowWelcome] = useState(
     () => localStorage.getItem(WELCOME_KEY) !== WELCOME_VERSION,
@@ -205,9 +211,11 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   }, [isDark]);
 
   useEffect(() => {
-    const preset =
-      ACCENT_PRESETS.find((p) => p.id === accent) ?? ACCENT_PRESETS[0];
-    const colors = isDark ? preset.dark : preset.light;
+    const resolved =
+      accent === "custom" && customTheme
+        ? customTheme
+        : (ACCENT_PRESETS.find((p) => p.id === accent) ?? ACCENT_PRESETS[0]);
+    const colors = isDark ? resolved.dark : resolved.light;
     const el = document.documentElement;
     el.style.setProperty("--accent", colors.accent);
     el.style.setProperty("--accent-hover", colors.accentHover);
@@ -217,7 +225,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     el.style.setProperty("--success-hover", colors.accentHover);
     localStorage.setItem(ACCENT_KEY, accent);
     saveAccent(accent);
-  }, [accent, isDark]);
+  }, [accent, isDark, customTheme]);
 
   // ── App-level handlers ─────────────────────────────────────────────────────
 
@@ -520,6 +528,12 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
               onToggleTheme={() => setIsDark((d) => !d)}
               accent={accent}
               onAccentChange={setAccent}
+              customTheme={customTheme}
+              onCustomThemeSave={(theme) => {
+                saveCustomTheme(theme);
+                setCustomTheme(theme);
+                setAccent("custom");
+              }}
               onClearHistory={() => setModalOpen(true)}
               onClearAllData={handleClearAllData}
               onToast={toast}

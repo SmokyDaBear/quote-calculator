@@ -503,6 +503,21 @@ export async function saveAccent(id: string): Promise<void> {
   await settingsPut('accent', id);
 }
 
+// ── Custom Theme ──────────────────────────────────────────────────────────────
+
+const CUSTOM_THEME_KEY = 'quote_calculator_custom_theme';
+
+export function loadCustomTheme(): import('./utils/customTheme').CustomTheme | null {
+  try {
+    const raw = localStorage.getItem(CUSTOM_THEME_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+export function saveCustomTheme(theme: import('./utils/customTheme').CustomTheme): void {
+  localStorage.setItem(CUSTOM_THEME_KEY, JSON.stringify(theme));
+}
+
 // ── Business Info ─────────────────────────────────────────────────────────────
 
 const BIZ_DEFAULTS: BusinessInfo = { name: '', address: '', phone: '', logo: '', printMessage: '' };

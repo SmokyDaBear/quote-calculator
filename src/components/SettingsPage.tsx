@@ -6,6 +6,8 @@ import {
   repricePartsLibrary,
 } from "../storage";
 import { ACCENT_PRESETS } from "../utils/accentPresets";
+import CustomThemeEditor from "./CustomThemeEditor";
+import type { CustomTheme } from "../utils/customTheme";
 import { DEFAULT_MARKUP_MATRIX, grossProfitPct } from "../utils/partsMarkup";
 import { parseCSV } from "./CSVLoader";
 import { downloadBackup, restoreBackup } from "../utils/backupData";
@@ -28,6 +30,8 @@ type TSettingsPageProps = {
   onToggleTheme: () => void;
   accent: string;
   onAccentChange: (accentId: string) => void;
+  customTheme: CustomTheme | null;
+  onCustomThemeSave: (theme: CustomTheme) => void;
   onClearHistory: () => void;
   onClearAllData: () => void;
   onToast?: (message: string, type?: "success" | "error") => void;
@@ -52,11 +56,14 @@ function SettingsPage({
   onToggleTheme,
   accent,
   onAccentChange,
+  customTheme,
+  onCustomThemeSave,
   onClearHistory,
   onClearAllData,
   onToast,
 }: TSettingsPageProps) {
   const [activeTab, setActiveTab] = useState<SettingsTab>("appearance");
+  const [showCustomEditor, setShowCustomEditor] = useState(false);
   const [ratesSaved, setRatesSaved] = useState(false);
   const [bizSaved, setBizSaved] = useState(false);
   const [defaultsLoading, setDefaultsLoading] = useState(false);
@@ -311,12 +318,42 @@ function SettingsPage({
                 key={preset.id}
                 className={`accent-swatch${accent === preset.id ? " active" : ""}`}
                 style={{ "--swatch-color": preset.swatch } as React.CSSProperties}
-                onClick={() => onAccentChange(preset.id)}
+                onClick={() => { onAccentChange(preset.id); setShowCustomEditor(false); }}
                 title={preset.name}
                 aria-label={preset.name}
               />
             ))}
+            {customTheme && (
+              <button
+                type="button"
+                className={`accent-swatch${accent === "custom" ? " active" : ""}`}
+                style={{ "--swatch-color": customTheme.swatch } as React.CSSProperties}
+                onClick={() => { onAccentChange("custom"); setShowCustomEditor(false); }}
+                title="Custom Theme"
+                aria-label="Custom Theme"
+              />
+            )}
+            <button
+              type="button"
+              className="accent-swatch-edit-btn"
+              onClick={() => setShowCustomEditor((v) => !v)}
+              title={customTheme ? "Edit custom theme" : "Create custom theme"}
+              aria-label={customTheme ? "Edit custom theme" : "Create custom theme"}
+            >
+              {showCustomEditor ? "×" : customTheme ? "✎" : "+"}
+            </button>
           </div>
+          {showCustomEditor && (
+            <CustomThemeEditor
+              isDark={isDark}
+              existing={customTheme}
+              onSave={(theme) => {
+                onCustomThemeSave(theme);
+                setShowCustomEditor(false);
+              }}
+              onCancel={() => setShowCustomEditor(false)}
+            />
+          )}
         </div>
       )}
 
