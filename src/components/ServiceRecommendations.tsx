@@ -42,7 +42,7 @@ function ServiceRecommendations({
   return (
     <div className="service-rec-panel">
       <div className="service-rec-header">
-        <span className="service-rec-title">Service Recommendations</span>
+        <h3 className="section-heading">Service Recommendations</h3>
         <span className="service-rec-subtitle">
           Based on {Number(mileage).toLocaleString()} mi
         </span>

@@ -14,6 +14,8 @@ export interface Customer {
   email: string;
   address: string;
   notes: string;
+  taxable?: boolean;   // undefined / true = taxable (default); false = tax-exempt
+  taxId?: string;      // tax-exempt certificate number
   createdAt: number;
 }
 
@@ -82,6 +84,7 @@ export type JobCategory = typeof JOB_CATEGORIES[number];
 export interface JobTemplate {
   id: string;
   name: string;
+  opCode?: string;
   description: string;
   laborHrs: number;
   laborCost: number;
@@ -198,12 +201,14 @@ export interface WarrantyTier {
 export interface WarrantyPolicy {
   id: string;
   label: string;
+  description?: string;
   category: string;         // maps to LibraryPart.category for auto-selection
   subcategory: string[];    // empty = match any subcategory; otherwise match any listed
   tiers: WarrantyTier[];
-  swapMaxMonths: number | null;
-  billOutMultiplier: number;
-  billOutMaxMonths: number | null;
+  // swapMaxMonths / billOutMultiplier / billOutMaxMonths kept for stored-data compat; no longer used
+  swapMaxMonths?: number | null;
+  billOutMultiplier?: number;
+  billOutMaxMonths?: number | null;
 }
 
 // ── Vehicle ──────────────────────────────────────────────────────────────────

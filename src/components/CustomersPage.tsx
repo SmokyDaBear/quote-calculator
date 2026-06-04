@@ -12,19 +12,13 @@ import {
 import { CSVLoader } from "./CSVLoader";
 import { VehicleFormFields } from "./VehicleSection";
 import type { VehicleFields } from "./VehicleSection";
-import { formatPhone, formatPhoneInput } from "../utils/formatPhone";
-import type { Customer, PhoneEntry, Vehicle } from "../types/index";
+import { CustomerFormFields } from "./CustomerFormFields";
+import type { CustomerFormData } from "./CustomerFormFields";
+import { ToggleField } from "./forms/ToggleField";
+import { formatPhone } from "../utils/formatPhone";
+import type { Customer, Vehicle } from "../types/index";
 
-// ── Form types ────────────────────────────────────────────────────────────────
-
-type CustomerFormData = {
-  name: string;
-  phones: PhoneEntry[];
-  email: string;
-  address: string;
-  notes: string;
-  _editingId?: string;
-};
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const EMPTY_CUSTOMER_FORM: CustomerFormData = {
   name: "",
@@ -32,130 +26,11 @@ const EMPTY_CUSTOMER_FORM: CustomerFormData = {
   email: "",
   address: "",
   notes: "",
+  taxable: true,
+  taxId: "",
 };
 
 const EMPTY_VEHICLE_FORM = { year: "", make: "", model: "", trim: "", vin: "", mileage: "" };
-
-// ── Customer form ─────────────────────────────────────────────────────────────
-
-function CustomerForm({ form, onChange, onSave, onCancel }: {
-  form: CustomerFormData;
-  onChange: (f: CustomerFormData) => void;
-  onSave: () => void;
-  onCancel: () => void;
-}) {
-  const set = (field: keyof CustomerFormData, value: unknown) =>
-    onChange({ ...form, [field]: value });
-
-  const addPhone = () =>
-    onChange({ ...form, phones: [...form.phones, { label: "Mobile", number: "" }] });
-
-  const updatePhone = (idx: number, field: keyof PhoneEntry, value: string) => {
-    onChange({
-      ...form,
-      phones: form.phones.map((p, i) =>
-        i === idx ? { ...p, [field]: value } : p,
-      ),
-    });
-  };
-
-  const removePhone = (idx: number) =>
-    onChange({ ...form, phones: form.phones.filter((_, i) => i !== idx) });
-
-  return (
-    <div className="page-form page-card">
-      <div className="lib-form-group">
-        <label>Name *</label>
-        <input
-          type="text"
-          placeholder="Customer name"
-          value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-        />
-      </div>
-
-      <div className="lib-form-group">
-        <div className="customer-phones-header">
-          <label>Phone Numbers</label>
-          <button type="button" className="btn-small btn-secondary" onClick={addPhone}>
-            + Add
-          </button>
-        </div>
-        <div className="customer-phone-list">
-          {form.phones.map((phone, idx) => (
-            <div key={idx} className="customer-phone-row">
-              <input
-                type="text"
-                className="customer-phone-label-input"
-                placeholder="Label"
-                value={phone.label}
-                onChange={(e) => updatePhone(idx, "label", e.target.value)}
-                aria-label={`Phone ${idx + 1} label`}
-              />
-              <input
-                type="tel"
-                className="customer-phone-number-input"
-                placeholder="Phone number"
-                value={phone.number}
-                onChange={(e) => updatePhone(idx, "number", formatPhoneInput(e.target.value))}
-                aria-label={`Phone ${idx + 1} number`}
-              />
-              {form.phones.length > 1 && (
-                <button
-                  type="button"
-                  className="btn-remove"
-                  onClick={() => removePhone(idx)}
-                  aria-label="Remove phone"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="lib-form-group">
-        <label>Email</label>
-        <input
-          type="email"
-          placeholder="customer@email.com"
-          value={form.email}
-          onChange={(e) => set("email", e.target.value)}
-        />
-      </div>
-
-      <div className="lib-form-group">
-        <label>Address</label>
-        <input
-          type="text"
-          placeholder="Street address, city, state"
-          value={form.address}
-          onChange={(e) => set("address", e.target.value)}
-        />
-      </div>
-
-      <div className="lib-form-group">
-        <label>Notes</label>
-        <textarea
-          className="lib-textarea"
-          placeholder="Internal notes about this customer…"
-          value={form.notes}
-          onChange={(e) => set("notes", e.target.value)}
-        />
-      </div>
-
-      <div className="lib-form-actions">
-        <button type="button" className="btn-small btn-secondary" onClick={onCancel}>
-          Cancel
-        </button>
-        <button type="button" className="btn-small btn-success" onClick={onSave}>
-          {form._editingId ? "Update" : "Save"}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ── Vehicle form ──────────────────────────────────────────────────────────────
 
@@ -242,6 +117,11 @@ function CustomerDetail({ customer, onEditCustomer, onEditVehicle, onAddVehicle,
           {customer.notes && (
             <span className="customer-detail-notes">{customer.notes}</span>
           )}
+          {customer.taxable === false && (
+            <span className="customer-tax-exempt-badge">
+              Tax Exempt{customer.taxId ? ` — ${customer.taxId}` : ""}
+            </span>
+          )}
         </div>
         <div className="page-item-actions">
           <button type="button" className="btn-small btn-secondary" onClick={onEditCustomer}>
@@ -304,6 +184,7 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [view, setView] = useState<View>("list");
   const [customerForm, setCustomerForm] = useState<CustomerFormData>(EMPTY_CUSTOMER_FORM);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [vehicleForm, setVehicleForm] = useState<VehicleFormState>(EMPTY_VEHICLE_FORM);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -313,7 +194,11 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
 
   // ── Customer actions ────────────────────────────────────────────────────────
 
-  const openNew = () => { setCustomerForm(EMPTY_CUSTOMER_FORM); setView("new"); };
+  const openNew = () => {
+    setCustomerForm(EMPTY_CUSTOMER_FORM);
+    setEditingId(null);
+    setView("new");
+  };
 
   const openEdit = (c: Customer) => {
     setCustomerForm({
@@ -322,8 +207,10 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
       email: c.email || "",
       address: c.address || "",
       notes: c.notes || "",
-      _editingId: c.id,
+      taxable: c.taxable !== false,
+      taxId: c.taxId || "",
     });
+    setEditingId(c.id);
     setView({ editingCustomer: c });
   };
 
@@ -340,9 +227,11 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
       email: customerForm.email.trim(),
       address: customerForm.address.trim(),
       notes: customerForm.notes.trim(),
+      taxable: customerForm.taxable,
+      taxId: customerForm.taxId.trim(),
     };
-    if (typeof view === "object" && "editingCustomer" in view) {
-      await updateCustomer(view.editingCustomer.id, data);
+    if (editingId && typeof view === "object" && "editingCustomer" in view) {
+      await updateCustomer(editingId, data);
       onToast?.(`"${data.name}" updated.`, "info");
       await refresh();
       setView({ detail: { ...view.editingCustomer, ...data } });
@@ -477,6 +366,9 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
                           .filter(Boolean)
                           .join(" · ")}
                       </span>
+                      {c.taxable === false && (
+                        <span className="customer-tax-exempt-badge">Tax Exempt</span>
+                      )}
                     </div>
                     <div className="page-item-actions">
                       <button type="button" className="btn-small btn-secondary" onClick={() => openDetail(c)}>
@@ -525,18 +417,50 @@ function CustomersPage({ onToast }: { onToast?: (msg: string, type?: string) => 
       )}
 
       {(view === "new" || (typeof view === "object" && "editingCustomer" in view)) && (
-        <CustomerForm
-          form={customerForm}
-          onChange={setCustomerForm}
-          onSave={handleSaveCustomer}
-          onCancel={() =>
-            setView(
-              typeof view === "object" && "editingCustomer" in view
-                ? { detail: view.editingCustomer }
-                : "list",
-            )
-          }
-        />
+        <div className="page-form page-card">
+          <CustomerFormFields
+            value={customerForm}
+            onChange={setCustomerForm}
+          />
+
+          <div className="customer-tax-row">
+            <ToggleField
+              checked={customerForm.taxable}
+              onChange={(v) => setCustomerForm({ ...customerForm, taxable: v })}
+              label="Taxable"
+            />
+            {!customerForm.taxable && (
+              <div className="lib-form-group customer-tax-id-group">
+                <label>Tax Exempt ID</label>
+                <input
+                  type="text"
+                  placeholder="Exemption certificate #"
+                  value={customerForm.taxId}
+                  onChange={(e) => setCustomerForm({ ...customerForm, taxId: e.target.value })}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="lib-form-actions">
+            <button
+              type="button"
+              className="btn-small btn-secondary"
+              onClick={() =>
+                setView(
+                  typeof view === "object" && "editingCustomer" in view
+                    ? { detail: view.editingCustomer }
+                    : "list",
+                )
+              }
+            >
+              Cancel
+            </button>
+            <button type="button" className="btn-small btn-success" onClick={handleSaveCustomer}>
+              {editingId ? "Update" : "Save"}
+            </button>
+          </div>
+        </div>
       )}
 
       {typeof view === "object" && "detail" in view && (

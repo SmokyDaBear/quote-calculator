@@ -64,12 +64,12 @@ function PartSearch({
         onChange={(e) => setQuery(e.target.value)}
       />
       {results.length > 0 && (
-        <div className="proration-part-dropdown">
+        <div className="dropdown-list">
           {results.map((p) => (
             <button
               key={p.id}
               type="button"
-              className="proration-part-item"
+              className="dropdown-item"
               onMouseDown={() => select(p)}
             >
               <span className="proration-part-name">{p.name}</span>
@@ -145,7 +145,7 @@ export default function ProrationCalculator() {
       </div>
 
       <div className="proration-inputs">
-        {policies.length > 1 && (
+        {policies.length > 0 && (
           <div className="proration-field">
             <label>Warranty Policy</label>
             <select
@@ -279,11 +279,7 @@ export default function ProrationCalculator() {
             </span>
           </div>
 
-          {result.isSwap ? (
-            <div className="proration-swap-msg">
-              Within the SWAP period — replace under warranty with no customer charge.
-            </div>
-          ) : result.tier === null ? (
+          {result.tier === null ? (
             <div className="proration-none-msg">
               Out of warranty. Customer is responsible for the full amount.
             </div>
@@ -310,17 +306,6 @@ export default function ProrationCalculator() {
                   {showLaborResult && <td>{fmt(result.warrantyPaysLaborCost)}</td>}
                   {showLaborResult && laborListNum > 0 && <td>—</td>}
                 </tr>
-                {result.isBillOut && (
-                  <tr className="proration-row-billout">
-                    <td>Bill-Out Amount</td>
-                    <td>—</td>
-                    <td>{fmt(result.billOutAmount)}</td>
-                    {listNum > 0 && <td>—</td>}
-                    {showLaborResult && <td>—</td>}
-                    {showLaborResult && <td>—</td>}
-                    {showLaborResult && laborListNum > 0 && <td>—</td>}
-                  </tr>
-                )}
                 <tr className="proration-row-customer">
                   <td>Customer Pays</td>
                   <td>{result.customerPartsPct}%</td>
@@ -334,11 +319,6 @@ export default function ProrationCalculator() {
             </table>
           )}
 
-          {result.isBillOut && selectedPolicy && selectedPolicy.billOutMultiplier !== 1 && (
-            <p className="proration-footnote">
-              Bill-out includes a ×{selectedPolicy.billOutMultiplier} markup applied within the first {selectedPolicy.billOutMaxMonths} months.
-            </p>
-          )}
         </div>
       )}
     </div>

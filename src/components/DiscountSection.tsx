@@ -8,9 +8,7 @@ function DiscountSection({ discount, onChange }: {
 
   return (
     <div className="discount-section">
-      <div className="discount-header">
-        <h3>Discount</h3>
-      </div>
+      <h3 className="section-heading">Discount</h3>
       <div className="discount-controls">
         <div className="discount-toggle-group">
           <button

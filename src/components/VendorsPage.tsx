@@ -5,25 +5,51 @@ import {
   updateVendor,
   deleteVendor,
 } from "../storage";
-import { formatPhone, formatPhoneInput } from "../utils/formatPhone";
-import type { Vendor } from "../types/index";
+import { formatPhone } from "../utils/formatPhone";
+import PhonesEditor from "./PhonesEditor";
+import type { Vendor, PhoneEntry } from "../types/index";
 import { CSVLoader } from "./CSVLoader";
 
 const PAGE_SIZE = 10;
 
-const EMPTY_FORM = { name: "", phone: "", address: "", contact: "", notes: "" };
+type VendorFormData = {
+  name: string;
+  phones: PhoneEntry[];
+  address: string;
+  contact: string;
+  notes: string;
+};
+
+const EMPTY_FORM: VendorFormData = {
+  name: "",
+  phones: [{ label: "Phone", number: "" }],
+  address: "",
+  contact: "",
+  notes: "",
+};
+
+// Normalize phones from stored vendor: handles legacy single-string phone field
+function normalizePhones(vendor: Vendor): PhoneEntry[] {
+  if (vendor.phones && vendor.phones.length > 0) {
+    return vendor.phones;
+  }
+  return [{ label: "Phone", number: "" }];
+}
 
 type View = "list" | "new" | { editing: Vendor };
 
 // ── Vendor form ───────────────────────────────────────────────────────────────
 
-function VendorForm({ form, onChange, onSave, onCancel }: {
-  form: Record<string, string>;
-  onChange: (f: Record<string, string>) => void;
+function VendorForm({ form, onChange, onSave, onCancel, isEditing }: {
+  form: VendorFormData;
+  onChange: (f: VendorFormData) => void;
   onSave: () => void;
   onCancel: () => void;
+  isEditing: boolean;
 }) {
-  const set = (f: string, v: string) => onChange({ ...form, [f]: v });
+  const set = <K extends keyof VendorFormData>(f: K, v: VendorFormData[K]) =>
+    onChange({ ...form, [f]: v });
+
   return (
     <div className="page-form page-card">
       <div className="lib-form-group">
@@ -35,16 +61,12 @@ function VendorForm({ form, onChange, onSave, onCancel }: {
           onChange={(e) => set("name", e.target.value)}
         />
       </div>
+
       <div className="lib-form-row two-col">
-        <div className="lib-form-group">
-          <label>Phone</label>
-          <input
-            type="tel"
-            placeholder="Vendor phone"
-            value={form.phone}
-            onChange={(e) => set("phone", formatPhoneInput(e.target.value))}
-          />
-        </div>
+        <PhonesEditor
+          phones={form.phones}
+          onChange={(phones) => set("phones", phones)}
+        />
         <div className="lib-form-group">
           <label>Contact Person</label>
           <input
@@ -55,6 +77,7 @@ function VendorForm({ form, onChange, onSave, onCancel }: {
           />
         </div>
       </div>
+
       <div className="lib-form-group">
         <label>Address</label>
         <textarea
@@ -78,7 +101,7 @@ function VendorForm({ form, onChange, onSave, onCancel }: {
           Cancel
         </button>
         <button type="button" className="btn-small btn-success" onClick={onSave}>
-          {form._editingId ? "Update Vendor" : "Save Vendor"}
+          {isEditing ? "Update Vendor" : "Save Vendor"}
         </button>
       </div>
     </div>
@@ -90,7 +113,7 @@ function VendorForm({ form, onChange, onSave, onCancel }: {
 function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => void }) {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [view, setView] = useState<View>("list");
-  const [form, setForm] = useState<Record<string, string>>(EMPTY_FORM);
+  const [form, setForm] = useState<VendorFormData>(EMPTY_FORM);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
@@ -102,18 +125,19 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
   const openEdit = (v: Vendor) => {
     setForm({
       name: v.name,
-      phone: v.phones?.[0]?.number ? formatPhone(v.phones[0].number) : "",
+      phones: normalizePhones(v),
       address: v.address || "",
       contact: v.contact || "",
       notes: v.notes || "",
-      _editingId: v.id,
     });
     setView({ editing: v });
   };
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
-    const phones = form.phone.trim() ? [{ label: "Phone", number: form.phone.trim() }] : [];
+    const phones = form.phones
+      .filter((p) => p.number.trim())
+      .map((p) => ({ label: p.label.trim() || "Phone", number: p.number.trim() }));
     const data = {
       name: form.name.trim(),
       phones,
@@ -271,6 +295,7 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
           onChange={setForm}
           onSave={handleSave}
           onCancel={() => setView("list")}
+          isEditing={isEditing}
         />
       )}
     </div>

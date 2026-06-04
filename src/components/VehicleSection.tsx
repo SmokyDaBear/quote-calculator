@@ -10,7 +10,11 @@ import {
 import { printRecalls } from "../utils/printRecalls";
 import { linkifyForReact } from "../utils/linkifyRecall";
 import type { Vehicle, DecodedVinData } from "../types/index";
-import type { MakeResponse, ModelResponse, RecallResponse } from "../utils/VehicleApi";
+import type {
+  MakeResponse,
+  ModelResponse,
+  RecallResponse,
+} from "../utils/VehicleApi";
 import { VehicleApi } from "../utils/VehicleApi";
 
 type RecallState = RecallResponse[] | null | "loading";
@@ -58,7 +62,9 @@ function RecallSection({ recalls }: { recalls: RecallState }) {
       <div className="vin-recalls-header">
         <span>Recalls</span>
         {Array.isArray(recalls) && (
-          <span className={`vin-recalls-badge${recalls.length > 0 ? " vin-recalls-badge--warn" : " vin-recalls-badge--ok"}`}>
+          <span
+            className={`vin-recalls-badge${recalls.length > 0 ? " vin-recalls-badge--warn" : " vin-recalls-badge--ok"}`}
+          >
             {recalls.length === 0 ? "None found" : `${recalls.length} found`}
           </span>
         )}
@@ -67,12 +73,17 @@ function RecallSection({ recalls }: { recalls: RecallState }) {
         <div className="vin-recalls-status">Checking for recalls…</div>
       )}
       {Array.isArray(recalls) && recalls.length === 0 && (
-        <div className="vin-recalls-status">No open recalls found for this vehicle.</div>
+        <div className="vin-recalls-status">
+          No open recalls found for this vehicle.
+        </div>
       )}
       {Array.isArray(recalls) && recalls.length > 0 && (
         <div className="vin-recall-list">
           {recalls.map((r) => (
-            <details key={r.NHTSACampaignNumber} className="vin-recall-item">
+            <details
+              key={r.NHTSACampaignNumber}
+              className="vin-recall-item"
+            >
               <summary className="vin-recall-summary">
                 <span className="vin-recall-num">#{r.NHTSACampaignNumber}</span>
                 {(r.parkIt || r.parkOutSide) && (
@@ -84,12 +95,31 @@ function RecallSection({ recalls }: { recalls: RecallState }) {
               </summary>
               <div className="vin-recall-body">
                 {r.ReportReceivedDate && (
-                  <p className="vin-recall-date">Reported: {r.ReportReceivedDate}</p>
+                  <p className="vin-recall-date">
+                    Reported: {r.ReportReceivedDate}
+                  </p>
                 )}
-                {r.Summary && <p><strong>Summary:</strong> {linkifyForReact(r.Summary)}</p>}
-                {r.Consequence && <p><strong>Consequence:</strong> {linkifyForReact(r.Consequence)}</p>}
-                {r.Remedy && <p><strong>Remedy:</strong> {linkifyForReact(r.Remedy)}</p>}
-                {r.Notes && <p><strong>Notes:</strong> {linkifyForReact(r.Notes)}</p>}
+                {r.Summary && (
+                  <p>
+                    <strong>Summary:</strong> {linkifyForReact(r.Summary)}
+                  </p>
+                )}
+                {r.Consequence && (
+                  <p>
+                    <strong>Consequence:</strong>{" "}
+                    {linkifyForReact(r.Consequence)}
+                  </p>
+                )}
+                {r.Remedy && (
+                  <p>
+                    <strong>Remedy:</strong> {linkifyForReact(r.Remedy)}
+                  </p>
+                )}
+                {r.Notes && (
+                  <p>
+                    <strong>Notes:</strong> {linkifyForReact(r.Notes)}
+                  </p>
+                )}
               </div>
             </details>
           ))}
@@ -334,7 +364,12 @@ export function VehicleFormFields({
           <option value={vehicle.make}>{vehicle.make}</option>
         )}
         {makes.map((m) => (
-          <option key={m} value={m}>{m}</option>
+          <option
+            key={m}
+            value={m}
+          >
+            {m}
+          </option>
         ))}
       </select>
     : <input
@@ -342,7 +377,8 @@ export function VehicleFormFields({
         disabled={makeDisabled}
         placeholder={
           !vehicle.year ? "Select year first"
-          : rawMakes === null ? "Loading makes…"
+          : rawMakes === null ?
+            "Loading makes…"
           : "e.g. Toyota"
         }
         value={vehicle.make}
@@ -364,7 +400,12 @@ export function VehicleFormFields({
           <option value={vehicle.model}>{vehicle.model}</option>
         )}
         {models.map((m) => (
-          <option key={m} value={m}>{m}</option>
+          <option
+            key={m}
+            value={m}
+          >
+            {m}
+          </option>
         ))}
       </select>
     : <input
@@ -372,8 +413,10 @@ export function VehicleFormFields({
         disabled={modelDisabled}
         placeholder={
           !vehicle.year ? "Select year first"
-          : !vehicle.make ? "Select make first"
-          : rawModels === null ? "Loading models…"
+          : !vehicle.make ?
+            "Select make first"
+          : rawModels === null ?
+            "Loading models…"
           : "e.g. Camry"
         }
         value={vehicle.model}
@@ -383,19 +426,30 @@ export function VehicleFormFields({
   return (
     <>
       <div className="vehicle-grid">
-        <div className="form-group">
+        <div className="form-group vehicle-year">
           <label>Year</label>
           <select
             aria-label="Year"
             value={vehicle.year}
             onChange={(e) => {
               setRawModels(null);
-              onChange({ ...vehicle, year: e.target.value, make: "", model: "", trim: "" });
+              onChange({
+                ...vehicle,
+                year: e.target.value,
+                make: "",
+                model: "",
+                trim: "",
+              });
             }}
           >
             <option value="">Year..</option>
             {YEARS.map((year) => (
-              <option key={year} value={year}>{year}</option>
+              <option
+                key={year}
+                value={year}
+              >
+                {year}
+              </option>
             ))}
           </select>
         </div>
@@ -425,30 +479,30 @@ export function VehicleFormFields({
             onChange={(e) => set("mileage", e.target.value)}
           />
         </div>
-        <div className="form-group vehicle-vin">
-          <label>VIN</label>
-          <div className="vin-input-row">
-            <input
-              type="text"
-              placeholder="17-character VIN"
-              value={vehicle.vin}
-              maxLength={17}
-              onChange={(e) => {
-                set("vin", e.target.value.toUpperCase());
-                setDecodeError("");
-              }}
-            />
-            <button
-              type="button"
-              className="btn-small"
-              onClick={handleDecodeVin}
-              disabled={decoding || vehicle.vin.trim().length !== 17}
-            >
-              {decoding ? "Decoding…" : "Decode VIN"}
-            </button>
-          </div>
-          {decodeError && <span className="vin-error">{decodeError}</span>}
+      </div>
+      <div className="form-group vehicle-vin">
+        <label>VIN</label>
+        <div className="vin-input-row">
+          <input
+            type="text"
+            placeholder="17-character VIN"
+            value={vehicle.vin}
+            maxLength={17}
+            onChange={(e) => {
+              set("vin", e.target.value.toUpperCase());
+              setDecodeError("");
+            }}
+          />
+          <button
+            type="button"
+            className="btn-small"
+            onClick={handleDecodeVin}
+            disabled={decoding || vehicle.vin.trim().length !== 17}
+          >
+            {decoding ? "Decoding…" : "Decode VIN"}
+          </button>
         </div>
+        {decodeError && <span className="vin-error">{decodeError}</span>}
       </div>
       {decodedVinData && decodedVinData.length > 0 && (
         <div className="vin-stored-data">
@@ -484,8 +538,13 @@ export function VehicleFormFields({
             {checkingRecalls ? "Checking…" : "Check Recalls"}
           </button>
           {Array.isArray(recalls) && (
-            <span className={`vin-recalls-inline-badge${recalls.length > 0 ? " vin-recalls-badge--warn" : " vin-recalls-badge--ok"}`}>
-              {recalls.length === 0 ? "No recalls" : `${recalls.length} recall${recalls.length !== 1 ? "s" : ""} found`}
+            <span
+              className={`vin-recalls-inline-badge${recalls.length > 0 ? " vin-recalls-badge--warn" : " vin-recalls-badge--ok"}`}
+            >
+              {recalls.length === 0 ?
+                "No recalls"
+              : `${recalls.length} recall${recalls.length !== 1 ? "s" : ""} found`
+              }
             </span>
           )}
           {Array.isArray(recalls) && recalls.length > 0 && (
@@ -535,12 +594,14 @@ function VehiclePickerStrip({
   onDecodedVinData?: (data: DecodedVinData | undefined) => void;
 }) {
   const [saved, setSaved] = useState<Vehicle[]>([]);
+  const [search, setSearch] = useState("");
 
   const refresh = () => getCustomerVehicles(customerId).then(setSaved);
 
   useEffect(() => {
     refresh();
     onSelectId(null);
+    setSearch("");
   }, [customerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelect = (v: Vehicle) => {
@@ -568,7 +629,10 @@ function VehiclePickerStrip({
     const hasData = vehicle.year || vehicle.make || vehicle.model;
     if (!hasData) return;
     if (selectedId) {
-      await updateCustomerVehicle(customerId, selectedId, { ...vehicle, decodedVinData });
+      await updateCustomerVehicle(customerId, selectedId, {
+        ...vehicle,
+        decodedVinData,
+      });
     } else {
       const created = await saveCustomerVehicle(customerId, {
         ...vehicle,
@@ -580,6 +644,16 @@ function VehiclePickerStrip({
     }
     refresh();
   };
+
+  const q = search.trim().toLowerCase();
+  const visible =
+    q ?
+      saved.filter(
+        (v) =>
+          vehicleLabel(v).toLowerCase().includes(q) ||
+          (v.vin || "").toLowerCase().includes(q),
+      )
+    : saved;
 
   return (
     <div className="vehicle-picker">
@@ -598,25 +672,58 @@ function VehiclePickerStrip({
         <span className="vehicle-picker-empty">
           No vehicles saved — fill in the form below and click Save Vehicle.
         </span>
-      : <div className="vehicle-picker-chips">
-          {saved.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              className={`vehicle-chip${selectedId === v.id ? " selected" : ""}`}
-              onClick={() => handleSelect(v)}
-            >
-              <span>{vehicleLabel(v)}</span>
-              <span
-                className="vehicle-chip-delete"
-                role="button"
-                onClick={(e) => handleDelete(e, v)}
+      : <>
+          {saved.length > 3 && (
+            <input
+              type="text"
+              className="vehicle-picker-search"
+              placeholder="Filter vehicles…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          )}
+          <div className="vehicle-picker-cards">
+            {visible.map((v) => (
+              <div
+                key={v.id}
+                className={`vehicle-card${selectedId === v.id ? " vehicle-card--selected" : ""}`}
               >
-                ×
+                <button
+                  type="button"
+                  className="vehicle-card-select"
+                  onClick={() => handleSelect(v)}
+                >
+                  <strong className="vehicle-card-label">
+                    {vehicleLabel(v)}
+                  </strong>
+                  {(v.vin || v.mileage) && (
+                    <span className="vehicle-card-meta">
+                      {[
+                        v.vin && `VIN: ${v.vin}`,
+                        v.mileage && `${Number(v.mileage).toLocaleString()} mi`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="btn-remove vehicle-card-delete"
+                  onClick={(e) => handleDelete(e, v)}
+                  aria-label={`Delete ${vehicleLabel(v)}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {visible.length === 0 && q && (
+              <span className="vehicle-picker-empty">
+                No vehicles match "{search}".
               </span>
-            </button>
-          ))}
-        </div>
+            )}
+          </div>
+        </>
       }
     </div>
   );
@@ -625,7 +732,12 @@ function VehiclePickerStrip({
 // ── VehicleSection (quote screen) ─────────────────────────────────────────────
 
 const EMPTY_VEHICLE_FIELDS: VehicleFields = {
-  year: "", make: "", model: "", trim: "", vin: "", mileage: "",
+  year: "",
+  make: "",
+  model: "",
+  trim: "",
+  vin: "",
+  mileage: "",
 };
 
 function VehicleSection({
@@ -638,49 +750,138 @@ function VehicleSection({
   customerId: string | null;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [decodedVinData, setDecodedVinData] = useState<DecodedVinData | undefined>();
+  const [decodedVinData, setDecodedVinData] = useState<
+    DecodedVinData | undefined
+  >();
 
-  const hasData =
-    vehicle.year || vehicle.make || vehicle.model ||
-    vehicle.trim || vehicle.vin || vehicle.mileage;
+  const hasData = !!(
+    vehicle.year ||
+    vehicle.make ||
+    vehicle.model ||
+    vehicle.trim ||
+    vehicle.vin ||
+    vehicle.mileage
+  );
+
+  const [isEditing, setIsEditing] = useState(!hasData);
+
+  // Sync edit mode when vehicle is cleared externally
+  useEffect(() => {
+    if (
+      !vehicle.year &&
+      !vehicle.make &&
+      !vehicle.model &&
+      !vehicle.trim &&
+      !vehicle.vin &&
+      !vehicle.mileage
+    ) {
+      setIsEditing(true);
+    }
+  }, [
+    vehicle.year,
+    vehicle.make,
+    vehicle.model,
+    vehicle.trim,
+    vehicle.vin,
+    vehicle.mileage,
+  ]);
 
   const handleClear = () => {
     onChange(EMPTY_VEHICLE_FIELDS);
     setSelectedId(null);
     setDecodedVinData(undefined);
+    setIsEditing(true);
   };
+
+  const handleChange = (v: VehicleFields) => {
+    onChange(v);
+  };
+
+  const showForm = isEditing || !hasData;
+
+  const label = [vehicle.year, vehicle.make, vehicle.model, vehicle.trim]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div className="vehicle-section">
       <div className="vehicle-section-header">
-        <h3>Vehicle Information</h3>
-        {hasData && (
-          <button
-            type="button"
-            className="btn-small btn-secondary"
-            onClick={handleClear}
-          >
-            Clear
-          </button>
-        )}
+        <h3 className="section-heading">Vehicle Information</h3>
       </div>
-      {customerId && (
-        <VehiclePickerStrip
-          customerId={customerId}
-          vehicle={vehicle}
-          onChange={onChange}
-          selectedId={selectedId}
-          onSelectId={setSelectedId}
-          decodedVinData={decodedVinData}
-          onDecodedVinData={setDecodedVinData}
-        />
-      )}
-      <VehicleFormFields
-        vehicle={vehicle}
-        onChange={onChange}
-        decodedVinData={decodedVinData}
-        onDecodedData={setDecodedVinData}
-      />
+
+      {showForm ?
+        <>
+          {customerId && (
+            <VehiclePickerStrip
+              customerId={customerId}
+              vehicle={vehicle}
+              onChange={(v) => {
+                handleChange(v);
+              }}
+              selectedId={selectedId}
+              onSelectId={(id) => {
+                setSelectedId(id);
+                if (id) setIsEditing(false);
+              }}
+              decodedVinData={decodedVinData}
+              onDecodedVinData={setDecodedVinData}
+            />
+          )}
+          <VehicleFormFields
+            vehicle={vehicle}
+            onChange={handleChange}
+            decodedVinData={decodedVinData}
+            onDecodedData={setDecodedVinData}
+          />
+          {hasData && (
+            <button
+              type="button"
+              className="btn-small btn-secondary info-done-btn"
+              onClick={() => setIsEditing(false)}
+            >
+              Done
+            </button>
+          )}
+        </>
+      : <div className="info-card">
+          <div className="info-card-header">
+            <strong className="info-card-name">{label || "Vehicle"}</strong>
+            <div className="info-card-actions">
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={() => setIsEditing(true)}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                className="btn-remove"
+                onClick={handleClear}
+                title="Clear vehicle"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          <div className="info-card-body">
+            {vehicle.vin && (
+              <div className="info-card-row">
+                <span className="info-card-text info-card-vin">
+                  {vehicle.vin}
+                </span>
+              </div>
+            )}
+            {vehicle.mileage && (
+              <div className="info-card-row">
+                <span className="info-card-text">
+                  {Number(vehicle.mileage).toLocaleString()} mi
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      }
     </div>
   );
 }

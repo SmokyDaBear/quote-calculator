@@ -1,146 +1,113 @@
 import { useState, useEffect, useRef } from "react";
-import { searchCustomers, saveCustomer } from "../storage";
-import { formatPhone, formatPhoneInput } from "../utils/formatPhone";
+import { searchCustomers } from "../storage";
+import { formatPhone } from "../utils/formatPhone";
 import type { Customer } from "../types/index";
 
-export function CustomerAutocomplete({ customerName, phone, onNameChange, onPhoneChange, onCustomerSelect }: {
-  customerName: string;
-  phone: string;
-  onNameChange: (v: string) => void;
-  onPhoneChange: (v: string) => void;
-  onCustomerSelect?: (c: Customer | null) => void;
+export function CustomerSearch({
+  selectedCustomer,
+  onSelect,
+  onClear,
+}: {
+  selectedCustomer: Customer | null;
+  onSelect: (c: Customer) => void;
+  onClear: () => void;
 }) {
-  const [nameQuery, setNameQuery] = useState(customerName);
-  const [phoneQuery, setPhoneQuery] = useState(phone);
-  const [activeField, setActiveField] = useState<'name' | 'phone' | null>(null);
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<Customer[]>([]);
+  const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const seqRef = useRef(0);
 
-  useEffect(() => { setNameQuery(customerName); }, [customerName]);
-  useEffect(() => { setPhoneQuery(formatPhone(phone)); }, [phone]);
-
-  const runSearch = (term: string, field: 'name' | 'phone') => {
-    if (term.trim().length === 0) { setResults([]); return; }
+  const runSearch = (term: string) => {
+    if (!term.trim()) { setResults([]); return; }
     const seq = ++seqRef.current;
     searchCustomers(term).then((found) => {
       if (seq !== seqRef.current) return;
       setResults(found);
-      setActiveField(field);
     });
   };
 
-  const primaryPhone = (c: Customer) =>
-    c.phones.length > 0 ? c.phones[0].number : '';
-
-  const selectCustomer = (c: Customer) => {
-    const formatted = formatPhone(primaryPhone(c));
-    setNameQuery(c.name);
-    setPhoneQuery(formatted);
-    onNameChange(c.name);
-    onPhoneChange(formatted);
-    onCustomerSelect?.(c);
-    setResults([]);
-    setActiveField(null);
-  };
-
-  const createNew = async () => {
-    const name = nameQuery.trim();
-    const ph = phoneQuery.trim();
-    if (!name) return;
-    const c = await saveCustomer({
-      name,
-      phones: ph ? [{ label: 'Phone', number: ph }] : [],
-    });
-    selectCustomer(c);
-  };
-
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
-    setNameQuery(v);
-    onNameChange(v);
-    if (!v.trim()) onCustomerSelect?.(null);
-    runSearch(v, "name");
+    setQuery(v);
+    setOpen(true);
+    runSearch(v);
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = formatPhoneInput(e.target.value);
-    setPhoneQuery(v);
-    onPhoneChange(v);
-    runSearch(v, "phone");
+  const handleSelect = (c: Customer) => {
+    setQuery("");
+    setResults([]);
+    setOpen(false);
+    onSelect(c);
   };
 
-  const closeDropdown = () => { setResults([]); setActiveField(null); };
+  const handleClear = () => {
+    setQuery("");
+    setResults([]);
+    setOpen(false);
+    onClear();
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        closeDropdown();
+        setOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const showDropdown = activeField !== null && (results.length > 0 || nameQuery.trim().length > 0);
-  const digits = (s: string) => String(s || "").replace(/\D/g, "");
-  const hasExactMatch = results.some(
-    (c) =>
-      c.name.toLowerCase() === nameQuery.trim().toLowerCase() &&
-      digits(primaryPhone(c)) === digits(phoneQuery)
-  );
+  const primaryPhone = (c: Customer) =>
+    c.phones.length > 0 ? c.phones[0].number : "";
+
+  const showDropdown = open && query.trim().length > 0;
 
   return (
-    <div className="customer-autocomplete" ref={containerRef}>
-      <div className="form-group customer-name-group">
-        <label htmlFor="customer-name">Customer Name</label>
-        <input
-          id="customer-name"
-          type="text"
-          placeholder="Enter customer name"
-          value={nameQuery}
-          autoComplete="off"
-          onChange={handleNameChange}
-          onFocus={() => nameQuery.trim() && runSearch(nameQuery, "name")}
-        />
-      </div>
-      <div className="form-group phone-group">
-        <label htmlFor="customer-phone">Phone</label>
-        <input
-          id="customer-phone"
-          type="tel"
-          placeholder="Phone number"
-          value={phoneQuery}
-          autoComplete="off"
-          onChange={handlePhoneChange}
-          onFocus={() => phoneQuery.trim() && runSearch(phoneQuery, "phone")}
-        />
-      </div>
+    <div className="customer-search-wrap" ref={containerRef}>
+      {selectedCustomer ? (
+        <div className="customer-linked-badge">
+          <span className="customer-linked-name">{selectedCustomer.name}</span>
+          <button
+            type="button"
+            className="customer-linked-clear"
+            onClick={handleClear}
+            title="Unlink customer"
+          >
+            ×
+          </button>
+        </div>
+      ) : (
+        <div className="customer-search-input-wrap">
+          <input
+            type="text"
+            className="customer-search-input"
+            placeholder="Search customers by name or phone…"
+            value={query}
+            autoComplete="off"
+            onChange={handleChange}
+            onFocus={() => query.trim() && setOpen(true)}
+          />
+        </div>
+      )}
 
       {showDropdown && (
-        <div className="customer-dropdown">
+        <div className="dropdown-list">
           {results.map((c) => (
             <button
               key={c.id}
               type="button"
-              className="customer-dropdown-item"
-              onMouseDown={() => selectCustomer(c)}
+              className="dropdown-item customer-dropdown-item"
+              onMouseDown={() => handleSelect(c)}
             >
               <span className="customer-dropdown-name">{c.name}</span>
               {c.phones.length > 0 && (
-                <span className="customer-dropdown-phone">{formatPhone(c.phones[0].number)}</span>
+                <span className="customer-dropdown-phone">{formatPhone(primaryPhone(c))}</span>
               )}
             </button>
           ))}
-
-          {!hasExactMatch && nameQuery.trim() && (
-            <button
-              type="button"
-              className="customer-dropdown-item customer-dropdown-new"
-              onMouseDown={createNew}
-            >
-              <span>Save &ldquo;{nameQuery.trim()}&rdquo; as new customer</span>
-            </button>
+          {results.length === 0 && query.trim() && (
+            <div className="customer-dropdown-empty">No customers found for "{query}"</div>
           )}
         </div>
       )}

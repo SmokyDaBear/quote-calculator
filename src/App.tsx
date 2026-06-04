@@ -1,12 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Modal from "./components/Modal";
-import HistorySidebar from "./components/HistorySidebar";
 import QuoteInfo from "./components/QuoteInfo";
+import QuoteHistoryPanel from "./components/QuoteHistoryPanel";
 import JobsSection from "./components/JobsSection";
 import NotesSection from "./components/NotesSection";
 import ResultsSection from "./components/ResultsSection";
 import ShopSuppliesOverride from "./components/ShopSuppliesOverride";
-import type { SsOverride } from "./components/ShopSuppliesOverride";
 import DiscountSection from "./components/DiscountSection";
 import TasksPanel from "./components/TasksPanel";
 import Footer from "./components/Footer";
@@ -21,7 +20,6 @@ import VehicleSection from "./components/VehicleSection";
 import ServiceRecommendations from "./components/ServiceRecommendations";
 import QuickJobs from "./components/QuickJobs";
 import TemplateFillModal from "./components/TemplateFillModal";
-import { printQuote } from "./utils/printQuote";
 import { useToast, ToastContainer } from "./components/Toast";
 import {
   IconQuote,
@@ -34,147 +32,181 @@ import {
   IconTools,
   PrintIcon,
   SaveIcon,
+  NewQuoteIcon,
 } from "./icons";
 import {
   DEFAULT_RATES,
   loadGlobalRates,
   saveGlobalRates,
-  getCurrentQuoteNumber,
-  saveQuote,
-  updateQuote,
   getHistoryIndex,
   clearHistory,
   clearAllData,
-  getQuote,
   deleteQuote,
   searchQuotes,
-  saveJobTemplate,
   loadBusinessInfo,
   saveBusinessInfo,
   saveAccent,
-  getPartsLibrary,
   getWarrantyPolicies,
+  getCurrentQuoteNumber,
 } from "./storage";
-import { calculateProration } from "./utils/proration";
-import type { GlobalRates, BusinessInfo, QuoteIndexEntry, JobTemplate, WorkingJob, WorkingPart, TemplatePart_Specific, Customer, WarrantyPolicy } from "./types/index";
+import type {
+  GlobalRates,
+  BusinessInfo,
+  QuoteIndexEntry,
+  WorkingPart,
+  Customer,
+  WarrantyPolicy,
+} from "./types/index";
+import { ToggleField } from "./components/forms/ToggleField";
 import { ACCENT_PRESETS } from "./utils/accentPresets";
 import { About } from "./components/About";
-import WelcomeModal, { WELCOME_KEY, WELCOME_VERSION } from "./components/WelcomeModal";
+import WelcomeModal, {
+  WELCOME_KEY,
+  WELCOME_VERSION,
+} from "./components/WelcomeModal";
+import { useQuote } from "./hooks/useQuote";
 
 const THEME_KEY = "quote_calculator_theme";
 const ACCENT_KEY = "quote_calculator_accent";
 
-const BIZ_DEFAULTS: BusinessInfo = { name: "", address: "", phone: "", logo: "", printMessage: "" };
-
-const EMPTY_JOB = (id: number) => ({
-  id,
-  name: `Job ${id}`,
-  parts: [] as WorkingPart[],
-  laborHrs: "",
-  laborCost: "",
-  description: "",
-  priceAtList: false,
-});
-
-const migrateJobParts = (parts: unknown): WorkingPart[] => {
-  if (Array.isArray(parts)) {
-    return (parts as Array<Record<string, unknown>>).map((p) => ({
-      partNumber: (p.partNumber as string) ?? "",
-      name: (p.name as string) ?? "",
-      price: (p.price as string) ?? "",
-      quantity: Number(p.quantity) || 1,
-      cost: p.cost as string | undefined,
-      msrp: p.msrp as string | undefined,
-    }));
-  }
-  const num = Number(parts) || 0;
-  return num > 0 ? [{ partNumber: "", name: "Parts", price: String(num), quantity: 1 }] : [];
+const BIZ_DEFAULTS: BusinessInfo = {
+  name: "",
+  address: "",
+  phone: "",
+  logo: "",
+  printMessage: "",
 };
 
 const NAV_TABS = [
-  { id: "quote",     label: "Quotes",        icon: <IconQuote /> },
-  { id: "templates", label: "Job Templates",  icon: <IconTemplates /> },
-  { id: "inventory", label: "Inventory",      icon: <IconInventory /> },
-  { id: "customers", label: "Customers",      icon: <IconCustomers /> },
-  { id: "vehicles",  label: "Vehicles",       icon: <IconVehicles /> },
-  { id: "vendors",   label: "Vendors",        icon: <IconVendors /> },
-  { id: "tools",     label: "Tools",          icon: <IconTools /> },
-  { id: "settings",  label: "Settings",       icon: <IconSettings /> },
+  { id: "quote", label: "Quotes", icon: <IconQuote /> },
+  { id: "templates", label: "Job Templates", icon: <IconTemplates /> },
+  { id: "inventory", label: "Inventory", icon: <IconInventory /> },
+  { id: "customers", label: "Customers", icon: <IconCustomers /> },
+  { id: "vehicles", label: "Vehicles", icon: <IconVehicles /> },
+  { id: "vendors", label: "Vendors", icon: <IconVendors /> },
+  { id: "tools", label: "Tools", icon: <IconTools /> },
+  { id: "settings", label: "Settings", icon: <IconSettings /> },
 ];
 
-const EMPTY_VEHICLE = { year: "", make: "", model: "", trim: "", vin: "", mileage: "" };
-type DiscountState = { type: "percentage" | "flat"; value: string; appliesTo: "both" | "parts" | "labor" };
-const EMPTY_DISCOUNT: DiscountState = { type: "percentage", value: "", appliesTo: "both" };
-
 function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
+  // ── App-level state ────────────────────────────────────────────────────────
   const [dbReady, setDbReady] = useState(false);
   const [activeView, setActiveView] = useState("quote");
-  const [jobs, setJobs] = useState<WorkingJob[]>([EMPTY_JOB(1)]);
-  const [jobCounter, setJobCounter] = useState(1);
   const [rates, setRates] = useState<GlobalRates>(DEFAULT_RATES);
   const [businessInfo, setBusinessInfo] = useState<BusinessInfo>(BIZ_DEFAULTS);
-  const [customerName, setCustomerName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [customerId, setCustomerId] = useState<string | null>(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [notes, setNotes] = useState("");
-  const [vehicle, setVehicle] = useState(EMPTY_VEHICLE);
-  const [currentQuoteId, setCurrentQuoteId] = useState<string | null>(null);
-  const [quoteNumber, setQuoteNumber] = useState(1001);
   const [history, setHistory] = useState<QuoteIndexEntry[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [warrantyPolicies, setWarrantyPolicies] = useState<WarrantyPolicy[]>(
+    [],
+  );
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem(THEME_KEY);
-    return saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    return saved ?
+        saved === "dark"
+      : window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
-  const [accent, setAccent] = useState(() => localStorage.getItem(ACCENT_KEY) ?? "green");
+  const [accent, setAccent] = useState(
+    () => localStorage.getItem(ACCENT_KEY) ?? "green",
+  );
   const [showWelcome, setShowWelcome] = useState(
     () => localStorage.getItem(WELCOME_KEY) !== WELCOME_VERSION,
   );
-  const dismissWelcome = () => {
-    localStorage.setItem(WELCOME_KEY, WELCOME_VERSION);
-    setShowWelcome(false);
-  };
   const [modalOpen, setModalOpen] = useState(false);
-  const [fillModal, setFillModal] = useState<{ template: JobTemplate } | null>(null);
   const [mobilePanel, setMobilePanel] = useState<string | null>(null);
   const [navOpen, setNavOpen] = useState(false);
-  const [discount, setDiscount] = useState(EMPTY_DISCOUNT);
-  const [ssOverride, setSsOverride] = useState<SsOverride>({ enabled: false, value: "" });
-  const [warrantyPolicies, setWarrantyPolicies] = useState<WarrantyPolicy[]>([]);
+  const [quoteTab, setQuoteTab] = useState<"compose" | "history">("compose");
+  const [historyPage, setHistoryPage] = useState(1);
 
   const { toasts, toast, dismiss } = useToast();
 
-  // ── Initial load from IndexedDB ────────────────────────────────────────────
+  // ── Quote hook ─────────────────────────────────────────────────────────────
+  const {
+    jobs,
+    customerData,
+    setCustomerData,
+    isTaxable,
+    setIsTaxable,
+    customerId,
+    setCustomerId,
+    selectedCustomer,
+    setSelectedCustomer,
+    notes,
+    setNotes,
+    vehicle,
+    setVehicle,
+    currentQuoteId,
+    quoteNumber,
+    setQuoteNumber,
+    discount,
+    setDiscount,
+    ssOverride,
+    setSsOverride,
+    fillModal,
+    setFillModal,
+    totals,
+    handleNewQuote,
+    handleSaveQuote,
+    handleUpdateQuote,
+    handleLoadQuote,
+    handlePrint,
+    handleAddJob,
+    handleUpdateJob,
+    handleRemoveJob,
+    handleSaveAsTemplate,
+    applyTemplateWithParts,
+    handleApplyTemplate,
+  } = useQuote({
+    rates,
+    warrantyPolicies,
+    businessInfo,
+    toast,
+    refreshHistory,
+    onRatesChange: setRates,
+    onNavigateToCompose: () => {
+      setQuoteTab("compose");
+      setHistoryPage(1);
+    },
+    onApplyTemplateWithSlots: () => setActiveView("quote"),
+  });
+
+  // ── Initial load ───────────────────────────────────────────────────────────
   useEffect(() => {
     Promise.all([
       loadGlobalRates(),
       loadBusinessInfo(),
-      getCurrentQuoteNumber(),
       getHistoryIndex(),
       getWarrantyPolicies(),
-    ]).then(([r, biz, qNum, hist, wPolicies]) => {
+    ]).then(([r, biz, hist, wPolicies]) => {
       setRates(r);
       setBusinessInfo(biz);
-      setQuoteNumber(qNum);
       setHistory(hist);
       setWarrantyPolicies(wPolicies);
       setDbReady(true);
       if (legacyMigrated) {
         toast(
-          'Your data has been migrated to IndexedDB for better performance. Your original data is preserved in localStorage as a backup.',
+          "Your data has been migrated to IndexedDB for better performance. Your original data is preserved in localStorage as a backup.",
         );
       }
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The hook initializes quoteNumber to 1001; sync it with the real current number on mount.
+  // We do this separately so the hook can already be in scope when useEffect runs.
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+    getCurrentQuoteNumber().then(setQuoteNumber);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    document.documentElement.setAttribute(
+      "data-theme",
+      isDark ? "dark" : "light",
+    );
     localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
   }, [isDark]);
 
   useEffect(() => {
-    const preset = ACCENT_PRESETS.find((p) => p.id === accent) ?? ACCENT_PRESETS[0];
+    const preset =
+      ACCENT_PRESETS.find((p) => p.id === accent) ?? ACCENT_PRESETS[0];
     const colors = isDark ? preset.dark : preset.light;
     const el = document.documentElement;
     el.style.setProperty("--accent", colors.accent);
@@ -186,77 +218,12 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     saveAccent(accent);
   }, [accent, isDark]);
 
-  const totals = useMemo(() => {
-    let grandLaborCost = 0;
-    let grandLaborHours = 0;
-    let grandPartsTotal = 0;
-    let grandSsTotal = 0;
-    let grandWarrantyTotal = 0;
-    let grandWarrantyPartsTotal = 0;
+  // ── App-level handlers ─────────────────────────────────────────────────────
 
-    const jobSummaries = jobs.map((job) => {
-      const partsTotal = job.parts.reduce(
-        (sum, p) => sum + (Number(p.price) || 0) * (Number(p.quantity) || 0),
-        0,
-      );
-      const laborHrs = Number(job.laborHrs) || 0;
-      const laborCost = Number(job.laborCost) || 0;
-      const subtotal = laborCost + partsTotal;
-
-      grandLaborCost += laborCost;
-      grandLaborHours += laborHrs;
-      grandPartsTotal += partsTotal;
-      grandSsTotal += rates.ssRate * 0.01 * laborCost;
-
-      let warrantyPartsAmount = 0;
-      let warrantyLaborAmount = 0;
-      let warrantyTierLabel = "";
-      let warrantyPolicyName = job.warrantyPolicyName ?? "";
-
-      if (job.warrantyPolicyId && job.warrantyDateBilled && warrantyPolicies.length > 0) {
-        const policy = warrantyPolicies.find((p) => p.id === job.warrantyPolicyId);
-        if (policy) {
-          const milesNum = job.warrantyMileage ? parseFloat(job.warrantyMileage) : undefined;
-          const result = calculateProration(policy, job.warrantyDateBilled, partsTotal, partsTotal, laborCost, laborCost, milesNum);
-          warrantyPartsAmount = result.warrantyPaysCost;
-          warrantyLaborAmount = result.warrantyPaysLaborCost;
-          warrantyTierLabel = result.isSwap ? "Swap Period" : (result.tier?.label ?? "");
-          warrantyPolicyName = policy.label;
-        }
-      }
-
-      grandWarrantyTotal += warrantyPartsAmount + warrantyLaborAmount;
-      grandWarrantyPartsTotal += warrantyPartsAmount;
-
-      return { id: job.id, name: job.name || `Job ${job.id}`, laborCost, laborHrs, partsTotal, subtotal, warrantyPartsAmount, warrantyLaborAmount, warrantyPolicyName, warrantyTierLabel };
-    });
-
-    const autoSsTotal = Math.min(grandSsTotal, rates.ssMax);
-    const ssTotal = ssOverride.enabled ? (Number(ssOverride.value) || 0) : autoSsTotal;
-
-    const taxableAmount = (grandPartsTotal - grandWarrantyPartsTotal) + ssTotal;
-    const taxTotal = taxableAmount * (rates.taxRate * 0.01);
-
-    const discountValue = Number(discount.value) || 0;
-    let discountAmount = 0;
-    if (discountValue > 0) {
-      const base =
-        discount.appliesTo === "parts" ? grandPartsTotal
-        : discount.appliesTo === "labor" ? grandLaborCost
-        : grandLaborCost + grandPartsTotal;
-      discountAmount =
-        discount.type === "percentage" ? base * (discountValue / 100) : Math.min(discountValue, base);
-    }
-
-    const grandTotal = grandLaborCost + grandPartsTotal + ssTotal + taxTotal - discountAmount - grandWarrantyTotal;
-
-    return { jobSummaries, laborCost: grandLaborCost, laborHours: grandLaborHours, partsTotal: grandPartsTotal, ssTotal, autoSsTotal, taxTotal, discountAmount, discount, warrantyTotal: grandWarrantyTotal, grandTotal };
-  }, [jobs, rates, discount, ssOverride, warrantyPolicies]);
-
-  const refreshHistory = async () => {
+  async function refreshHistory() {
     const h = await getHistoryIndex();
     setHistory(h);
-  };
+  }
 
   const handleRatesChange = (newRates: GlobalRates) => {
     setRates(newRates);
@@ -268,157 +235,9 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     saveBusinessInfo(info);
   };
 
-  const handleAddJob = () => {
-    const newId = jobCounter + 1;
-    setJobCounter(newId);
-    setJobs((prev) => [...prev, EMPTY_JOB(newId)]);
-  };
-
-  const handleUpdateJob = (id: number, field: string, value: unknown) => {
-    setJobs((prev) =>
-      prev.map((j) => {
-        if (j.id !== id) return j;
-        const updated = { ...j, [field]: value };
-        if (field === "laborHrs") {
-          const computed = (Number(value) || 0) * rates.laborRate;
-          updated.laborCost = computed > 0 ? computed.toFixed(2) : "";
-        }
-        if (field === "priceAtList") {
-          const on = value as boolean;
-          updated.parts = j.parts.map((p) => {
-            if (on) {
-              return {
-                ...p,
-                basePrice: p.price,
-                price: (p.msrp && Number(p.msrp) > 0) ? p.msrp : p.price,
-              };
-            } else {
-              return {
-                ...p,
-                price: p.basePrice ?? p.price,
-                basePrice: undefined,
-              };
-            }
-          });
-        }
-        return updated;
-      }),
-    );
-  };
-
-  const handleRemoveJob = (id: number) =>
-    setJobs((prev) => prev.filter((j) => j.id !== id));
-
-  const handleNewQuote = async () => {
-    setCurrentQuoteId(null);
-    setQuoteNumber(await getCurrentQuoteNumber());
-    setCustomerName("");
-    setPhone("");
-    setCustomerId(null);
-    setSelectedCustomer(null);
-    setNotes("");
-    setVehicle(EMPTY_VEHICLE);
-    setRates(await loadGlobalRates());
-    setJobCounter(1);
-    setJobs([EMPTY_JOB(1)]);
-    setDiscount(EMPTY_DISCOUNT);
-    setSsOverride({ enabled: false, value: "" });
-  };
-
-  const buildQuoteData = () => ({
-    customerName: customerName.trim(),
-    phone,
-    customerId,
-    notes,
-    vehicle,
-    rates,
-    discount,
-    ssOverride,
-    jobs: jobs.map((j) => ({
-      name: j.name,
-      parts: j.parts.map((p) => ({
-        partNumber: p.partNumber || "",
-        name: p.name,
-        price: Number(p.price) || 0,
-        quantity: Number(p.quantity) || 1,
-        cost: p.cost,
-        msrp: p.msrp,
-      })),
-      laborHrs: Number(j.laborHrs) || 0,
-      laborCost: Number(j.laborCost) || 0,
-      description: j.description,
-      priceAtList: j.priceAtList,
-      warrantyPolicyId: j.warrantyPolicyId,
-      warrantyPolicyName: j.warrantyPolicyName,
-      warrantyDateBilled: j.warrantyDateBilled,
-      warrantyMileage: j.warrantyMileage,
-    })),
-    grandTotal: totals.grandTotal,
-  });
-
-  const handleSaveQuote = async () => {
-    if (!customerName.trim()) {
-      toast("Please enter a customer name before saving.", "error");
-      return;
-    }
-    const savedNumber = await saveQuote(buildQuoteData());
-    setCurrentQuoteId(String(savedNumber));
-    setQuoteNumber(savedNumber);
-    await refreshHistory();
-    toast(`Quote #${savedNumber} saved successfully!`);
-  };
-
-  const handleUpdateQuote = async () => {
-    if (!currentQuoteId) return;
-    if (!customerName.trim()) {
-      toast("Please enter a customer name before saving.", "error");
-      return;
-    }
-    await updateQuote(currentQuoteId, buildQuoteData());
-    await refreshHistory();
-    toast(`Quote #${currentQuoteId} updated successfully!`);
-  };
-
-  const handleLoadQuote = async (quoteId: string) => {
-    const quote = await getQuote(quoteId);
-    if (!quote) {
-      toast("Quote not found.", "error");
-      return;
-    }
-    setCurrentQuoteId(quoteId);
-    setQuoteNumber(Number(quoteId));
-    setCustomerName((quote.customerName as string) || "");
-    setPhone((quote.phone as string) || "");
-    setCustomerId((quote.customerId as string) || null);
-    setNotes((quote.notes as string) || "");
-    setVehicle((quote.vehicle as typeof EMPTY_VEHICLE) || EMPTY_VEHICLE);
-    if (quote.rates) setRates(quote.rates as GlobalRates);
-    setDiscount((quote.discount as typeof EMPTY_DISCOUNT) || EMPTY_DISCOUNT);
-    setSsOverride((quote.ssOverride as SsOverride) || { enabled: false, value: "" });
-    if (quote.jobs && (quote.jobs as unknown[]).length > 0) {
-      const loaded = (quote.jobs as Array<Record<string, unknown>>).map((jobData, i) => ({
-        id: i + 1,
-        name: (jobData.name as string) || `Job ${i + 1}`,
-        parts: migrateJobParts(jobData.parts),
-        laborHrs: (jobData.laborHrs as string)?.toString() || "",
-        laborCost: (jobData.laborCost as string)?.toString() || "",
-        description: (jobData.description as string) || "",
-        priceAtList: (jobData.priceAtList as boolean) || false,
-        warrantyPolicyId: (jobData.warrantyPolicyId as string) || undefined,
-        warrantyPolicyName: (jobData.warrantyPolicyName as string) || undefined,
-        warrantyDateBilled: (jobData.warrantyDateBilled as string) || undefined,
-        warrantyMileage: (jobData.warrantyMileage as string) || undefined,
-      }));
-      setJobs(loaded);
-      setJobCounter(loaded.length);
-    } else {
-      setJobs([EMPTY_JOB(1)]);
-      setJobCounter(1);
-    }
-  };
-
   const handleDeleteHistoryQuote = async (quoteId: string) => {
-    if (!window.confirm(`Delete Quote #${quoteId}? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete Quote #${quoteId}? This cannot be undone.`))
+      return;
     await deleteQuote(quoteId);
     if (currentQuoteId === quoteId) await handleNewQuote();
     else await refreshHistory();
@@ -446,71 +265,9 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     window.location.reload();
   };
 
-  const handlePrint = () => {
-    printQuote({ quoteNumber, customerName, phone, notes, vehicle, jobs, rates, totals, discount, businessInfo, customer: selectedCustomer });
-  };
-
-  const handleSaveAsTemplate = async (job: WorkingJob) => {
-    await saveJobTemplate({
-      name: job.name,
-      description: job.description || "",
-      laborHrs: Number(job.laborHrs) || 0,
-      laborCost: Number(job.laborCost) || 0,
-      parts: [],  // quote parts can't be reverse-linked to partIds; user adds in template editor
-    });
-    toast(`Template "${job.name}" saved.`);
-  };
-
-  const applyTemplateWithParts = (template: JobTemplate, resolvedParts: WorkingPart[]) => {
-    const newId = jobCounter + 1;
-    setJobCounter(newId);
-    setJobs((prev) => [
-      ...prev,
-      {
-        id: newId,
-        name: template.name,
-        parts: resolvedParts.map((p) => ({
-          partNumber: p.partNumber || "",
-          name: p.name || "",
-          price: p.price?.toString() || "",
-          quantity: p.quantity ?? 1,
-          cost: p.cost,
-          msrp: p.msrp,
-        })),
-        laborHrs: template.laborHrs ? template.laborHrs.toString() : "",
-        laborCost: template.laborCost ? template.laborCost.toString() : "",
-        description: template.description || "",
-        priceAtList: false,
-      },
-    ]);
-  };
-
-  const handleApplyTemplate = async (template: JobTemplate) => {
-    const hasSlots = (template.parts || []).some((p) => p.type === "category");
-
-    if (hasSlots) {
-      setFillModal({ template });
-      setActiveView("quote");
-      return;
-    }
-
-    // Resolve specific parts from library
-    const library = await getPartsLibrary();
-    const resolved: WorkingPart[] = (template.parts || [])
-      .filter((p): p is TemplatePart_Specific => p.type === "specific" && !!p.partId)
-      .map((p) => {
-        const found = library.find((lp) => lp.id === p.partId);
-        return {
-          partNumber: found?.partNumber || "",
-          name: found?.name || "(unknown part)",
-          price: found?.price?.toString() || "0",
-          quantity: p.quantity,
-          cost: found?.cost?.toString(),
-          msrp: found?.msrp?.toString(),
-        };
-      });
-
-    applyTemplateWithParts(template, resolved);
+  const dismissWelcome = () => {
+    localStorage.setItem(WELCOME_KEY, WELCOME_VERSION);
+    setShowWelcome(false);
   };
 
   const toggleMobilePanel = (panel: string) =>
@@ -524,18 +281,20 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     <div className="app-root">
       <div className={`app-header-wrap${navOpen ? " nav-open" : ""}`}>
         <header>
-          {businessInfo.name || businessInfo.logo ? (
+          {businessInfo.name || businessInfo.logo ?
             <div className="header-brand">
               {businessInfo.logo && (
-                <img src={businessInfo.logo} alt="Logo" className="header-logo" />
+                <img
+                  src={businessInfo.logo}
+                  alt="Logo"
+                  className="header-logo"
+                />
               )}
               {businessInfo.name && (
                 <span className="header-biz-name">{businessInfo.name}</span>
               )}
             </div>
-          ) : (
-            <h1>Quote Calculator</h1>
-          )}
+          : <h1>Quote Calculator</h1>}
           <button
             className="nav-hamburger"
             aria-label="Toggle navigation"
@@ -552,7 +311,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
               <button
                 key={tab.id}
                 className={`main-nav-tab${activeView === tab.id ? " active" : ""}`}
-                onClick={() => { setActiveView(tab.id); setNavOpen(false); }}
+                onClick={() => {
+                  setActiveView(tab.id);
+                  setNavOpen(false);
+                }}
               >
                 {tab.icon}
                 {tab.label}
@@ -561,18 +323,14 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
           </div>
         </nav>
       </div>
+
       <Modal
         isOpen={modalOpen}
         onCancel={() => setModalOpen(false)}
         onConfirm={handleClearHistory}
       />
+
       <div className="mobile-sidebar-bar">
-        <button
-          className={`mobile-sidebar-btn${mobilePanel === "history" ? " active" : ""}`}
-          onClick={() => toggleMobilePanel("history")}
-        >
-          History
-        </button>
         <button
           className={`mobile-sidebar-btn${mobilePanel === "tasks" ? " active" : ""}`}
           onClick={() => toggleMobilePanel("tasks")}
@@ -582,71 +340,155 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
       </div>
 
       <div className="app-body">
-        <aside className={`app-sidebar-left${mobilePanel === "history" ? " mobile-open" : ""}`}>
-          <HistorySidebar
-            history={history}
-            searchTerm={searchTerm}
-            onSearch={handleSearch}
-            onLoadQuote={handleLoadQuote}
-            onDeleteQuote={handleDeleteHistoryQuote}
-          />
-        </aside>
-
         <main>
           {activeView === "quote" && (
             <div className="calculator-container">
-              <QuoteInfo
-                quoteNumber={quoteNumber}
-                customerName={customerName}
-                setCustomerName={setCustomerName}
-                phone={phone}
-                setPhone={setPhone}
-                onNewQuote={handleNewQuote}
-                onCustomerSelect={(c: Customer | null) => { setCustomerId(c ? c.id : null); setSelectedCustomer(c); }}
-                selectedCustomer={selectedCustomer}
-              />
-              <VehicleSection vehicle={vehicle} onChange={setVehicle} customerId={customerId} />
-              <NotesSection notes={notes} onChange={setNotes} />
-              <QuickJobs jobs={jobs} onApplyTemplate={handleApplyTemplate} />
-              <ServiceRecommendations
-                mileage={vehicle.mileage}
-                jobs={jobs}
-                onApplyTemplate={handleApplyTemplate}
-              />
-              <JobsSection
-                jobs={jobs}
-                totals={totals}
-                onAddJob={handleAddJob}
-                onUpdateJob={handleUpdateJob}
-                onRemoveJob={handleRemoveJob}
-                onSaveAsTemplate={handleSaveAsTemplate}
-                onApplyTemplate={handleApplyTemplate}
-              />
-              <DiscountSection discount={discount} onChange={setDiscount} />
-              <div className="action-buttons quote-actions">
-                <button type="button" className="btn btn-secondary" onClick={handlePrint}>
-                  <PrintIcon /> Print Quote
-                </button>
-                {currentQuoteId && (
-                  <button type="button" className="btn btn-success" onClick={handleSaveQuote}>
-                    <SaveIcon /> Save as New
-                  </button>
-                )}
+              <div className="section-tabs">
                 <button
                   type="button"
-                  className={`btn ${currentQuoteId ? "btn-warning" : "btn-success"}`}
-                  onClick={currentQuoteId ? handleUpdateQuote : handleSaveQuote}
+                  className={`section-tab${quoteTab === "compose" ? " section-tab--active" : ""}`}
+                  onClick={() => setQuoteTab("compose")}
                 >
-                  <SaveIcon />
-                  {currentQuoteId ? `Update #${currentQuoteId}` : "Save Quote"}
+                  {currentQuoteId ? `Quote #${quoteNumber}` : "New Quote"}
+                </button>
+                <button
+                  type="button"
+                  className={`section-tab${quoteTab === "history" ? " section-tab--active" : ""}`}
+                  onClick={() => {
+                    setQuoteTab("history");
+                    setHistoryPage(1);
+                  }}
+                >
+                  History
                 </button>
               </div>
-              <ShopSuppliesOverride
-                override={ssOverride}
-                onChange={setSsOverride}
-                autoAmount={totals.autoSsTotal}
-              />
-              <ResultsSection totals={totals} />
+
+              {quoteTab === "history" ?
+                <QuoteHistoryPanel
+                  history={history}
+                  searchTerm={searchTerm}
+                  onSearch={handleSearch}
+                  onLoadQuote={handleLoadQuote}
+                  onDeleteQuote={handleDeleteHistoryQuote}
+                  page={historyPage}
+                  onPageChange={setHistoryPage}
+                />
+              : <div className="quote-compose-layout">
+                  {/* ── Main column ── */}
+                  <div className="quote-compose-main">
+                    <div className="quote-info-vehicle-row">
+                      <QuoteInfo
+                        customerData={customerData}
+                        onCustomerDataChange={(d) => {
+                          setCustomerData(d);
+                          setIsTaxable(d.taxable);
+                        }}
+                        onCustomerSelect={(c: Customer | null) => {
+                          setCustomerId(c ? c.id : null);
+                          setSelectedCustomer(c);
+                        }}
+                        selectedCustomer={selectedCustomer}
+                      />
+                      <VehicleSection
+                        vehicle={vehicle}
+                        onChange={setVehicle}
+                        customerId={customerId}
+                      />
+                    </div>
+                    <QuickJobs
+                      jobs={jobs}
+                      onApplyTemplate={handleApplyTemplate}
+                    />
+                    <ServiceRecommendations
+                      mileage={vehicle.mileage}
+                      jobs={jobs}
+                      onApplyTemplate={handleApplyTemplate}
+                    />
+                    <JobsSection
+                      jobs={jobs}
+                      totals={totals}
+                      onAddJob={handleAddJob}
+                      onUpdateJob={handleUpdateJob}
+                      onRemoveJob={handleRemoveJob}
+                      onSaveAsTemplate={handleSaveAsTemplate}
+                      onApplyTemplate={handleApplyTemplate}
+                    />
+                    <div className="quote-modifiers">
+                      <DiscountSection
+                        discount={discount}
+                        onChange={setDiscount}
+                      />
+                      <ShopSuppliesOverride
+                        override={ssOverride}
+                        onChange={setSsOverride}
+                        autoAmount={totals.autoSsTotal}
+                      />
+                      <div className="quote-taxable-section">
+                        <ToggleField
+                          checked={isTaxable}
+                          onChange={setIsTaxable}
+                          label="Taxable"
+                          badge={
+                            !isTaxable && customerData.taxId ?
+                              `Exempt ID: ${customerData.taxId}`
+                            : undefined
+                          }
+                        />
+                      </div>
+                    </div>
+                    <NotesSection
+                      notes={notes}
+                      onChange={setNotes}
+                    />
+                  </div>
+
+                  {/* ── Sticky aside ── */}
+                  <div className="quote-compose-aside">
+                    <div className="quote-aside-number">
+                      <span className="quote-aside-label">Quote #</span>
+                      <span className="quote-aside-num">{quoteNumber}</span>
+                    </div>
+                    <div className="quote-aside-actions">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleNewQuote}
+                      >
+                        <NewQuoteIcon /> New Quote
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handlePrint}
+                      >
+                        <PrintIcon /> Print Quote
+                      </button>
+                      {currentQuoteId && (
+                        <button
+                          type="button"
+                          className="btn btn-success"
+                          onClick={handleSaveQuote}
+                        >
+                          <SaveIcon /> Save as New
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className={`btn ${currentQuoteId ? "btn-warning" : "btn-success"}`}
+                        onClick={
+                          currentQuoteId ? handleUpdateQuote : handleSaveQuote
+                        }
+                      >
+                        <SaveIcon />
+                        {currentQuoteId ?
+                          `Update #${currentQuoteId}`
+                        : "Save Quote"}
+                      </button>
+                    </div>
+                    <ResultsSection totals={totals} />
+                  </div>
+                </div>
+              }
             </div>
           )}
           {activeView === "templates" && (
@@ -657,7 +499,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
             />
           )}
           {activeView === "inventory" && (
-            <InventoryPage onToast={toast} markupMatrix={rates.partsMarkupMatrix} />
+            <InventoryPage
+              onToast={toast}
+              markupMatrix={rates.partsMarkupMatrix}
+            />
           )}
           {activeView === "customers" && <CustomersPage onToast={toast} />}
           {activeView === "vehicles" && <VehiclesPage onToast={toast} />}
@@ -681,16 +526,20 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
           )}
         </main>
 
-        <aside className={`app-sidebar-right${mobilePanel === "tasks" ? " mobile-open" : ""}`}>
+        <aside
+          className={`app-sidebar-right${mobilePanel === "tasks" ? " mobile-open" : ""}`}
+        >
           <TasksPanel />
         </aside>
       </div>
+
       <Footer
         activeView={activeView}
         onSetView={setActiveView}
         isDark={isDark}
         onToggleTheme={() => setIsDark((d) => !d)}
       />
+
       {fillModal && (
         <TemplateFillModal
           template={fillModal.template}
@@ -701,7 +550,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
           onCancel={() => setFillModal(null)}
         />
       )}
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <ToastContainer
+        toasts={toasts}
+        onDismiss={dismiss}
+      />
       {showWelcome && <WelcomeModal onDismiss={dismissWelcome} />}
     </div>
   );

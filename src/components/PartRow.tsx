@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { LibraryPart } from "../types/index";
 
-type PartData = { partNumber: string; name: string; price: string; quantity: number; msrp?: string; cost?: string; isEstimate?: boolean };
+type PartData = { partNumber: string; name: string; price: string; quantity: number; msrp?: string; cost?: string; isEstimate?: boolean; partId?: string };
 
 function searchLibrary(library: LibraryPart[], term: string): LibraryPart[] {
   if (!term.trim()) return [];
@@ -43,6 +43,7 @@ function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtLis
   const selectPart = (p: LibraryPart) => {
     const sellPrice = (priceAtList && p.msrp) ? p.msrp : p.price;
     onReplace(idx, {
+      partId: p.id,
       partNumber: p.partNumber || "",
       name: p.name,
       price: sellPrice.toString(),

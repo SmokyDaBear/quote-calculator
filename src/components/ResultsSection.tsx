@@ -19,7 +19,7 @@ const fmt = (n: number) => `$${n.toFixed(2)}`;
 function ResultsSection({ totals }: { totals: Totals }) {
   return (
     <div className="results-section">
-      <h3>Quote Summary</h3>
+      <h3 className="section-heading">Quote Summary</h3>
       <div className="job-summaries">
         {totals.jobSummaries.map((s) => (
           <div key={s.id} className="job-summary">

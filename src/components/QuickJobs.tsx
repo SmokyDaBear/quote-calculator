@@ -25,7 +25,7 @@ function QuickJobs({ jobs, onApplyTemplate }: {
   return (
     <div className="service-rec-panel">
       <div className="service-rec-header">
-        <span className="service-rec-title">Quick Jobs</span>
+        <h3 className="section-heading">Quick Jobs</h3>
         <span className="service-rec-subtitle">
           {templates.length} template{templates.length !== 1 ? "s" : ""}
         </span>

@@ -1,7 +1,7 @@
 function NotesSection({ notes, onChange }: { notes: string; onChange: (v: string) => void }) {
   return (
     <div className="notes-section">
-      <h3>Order Notes</h3>
+      <h3 className="section-heading">Order Notes</h3>
       <textarea
         className="notes-textarea"
         placeholder="Add order notes..."

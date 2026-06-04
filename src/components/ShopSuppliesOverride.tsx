@@ -1,3 +1,5 @@
+import { ToggleField } from "./forms/ToggleField";
+
 export type SsOverride = { enabled: boolean; value: string };
 
 function ShopSuppliesOverride({
@@ -15,17 +17,12 @@ function ShopSuppliesOverride({
 
   return (
     <div className="ss-override-section">
-      <label className="ss-override-label">
-        <input
-          type="checkbox"
-          checked={override.enabled}
-          onChange={(e) => handleToggle(e.target.checked)}
-        />
-        <span>Override Shop Supplies</span>
-        {!override.enabled && autoAmount > 0 && (
-          <span className="ss-override-auto">auto: ${autoAmount.toFixed(2)}</span>
-        )}
-      </label>
+      <ToggleField
+        checked={override.enabled}
+        onChange={handleToggle}
+        label="Override Shop Supplies"
+        badge={!override.enabled && autoAmount > 0 ? `auto: $${autoAmount.toFixed(2)}` : undefined}
+      />
       {override.enabled && (
         <div className="ss-override-row">
           <div className="ss-override-input-wrap">

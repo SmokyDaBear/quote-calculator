@@ -7,7 +7,7 @@ function RatesSection({ rates, onChange }: { rates: GlobalRates; onChange: (r: G
 
   return (
     <div className="rates-section">
-      <h3>Global Rates</h3>
+      <h3 className="section-heading">Global Rates</h3>
       <div className="rates-grid">
         <div className="form-group">
           <label htmlFor="tax-rate">Tax Rate (%)</label>

@@ -9,6 +9,7 @@ import {
   getEstimatedPriceMap,
 } from "../storage";
 import { CATEGORY_NAMES, getSubcategories } from "../utils/partCategories";
+import { ToggleField } from "./forms/ToggleField";
 import PartPickerModal from "./PartPickerModal";
 import { CSVLoader } from "./CSVLoader";
 import PartRow from "./PartRow";
@@ -34,6 +35,7 @@ type FormTemplatePart = WorkingCategorySlot | WorkingSpecificPart;
 
 type TemplateFormData = {
   name: string;
+  opCode: string;
   description: string;
   laborHrs: string;
   laborCost: string;
@@ -46,6 +48,7 @@ type TemplateFormData = {
 
 const EMPTY_FORM: TemplateFormData = {
   name: "",
+  opCode: "",
   description: "",
   laborHrs: "",
   laborCost: "",
@@ -276,14 +279,28 @@ function TemplateForm({ form, onChange, onSave, onCancel, onOpenPicker, laborRat
 
   return (
     <div className="page-form page-card">
-      <div className="lib-form-group">
-        <label>Template Name *</label>
-        <input
-          type="text"
-          placeholder="e.g. Oil Change"
-          value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-        />
+      <div className="lib-form-row two-col">
+        <div className="lib-form-group">
+          <label>Template Name *</label>
+          <input
+            type="text"
+            placeholder="e.g. Oil Change"
+            value={form.name}
+            onChange={(e) => set("name", e.target.value)}
+          />
+        </div>
+        <div className="lib-form-group lib-form-group--narrow">
+          <label>
+            Op Code
+            <span className="lib-label-hint"> (optional)</span>
+          </label>
+          <input
+            type="text"
+            placeholder="e.g. A4"
+            value={form.opCode}
+            onChange={(e) => set("opCode", e.target.value.toUpperCase())}
+          />
+        </div>
       </div>
       <div className="lib-form-group">
         <label>Job Category</label>
@@ -347,15 +364,12 @@ function TemplateForm({ form, onChange, onSave, onCancel, onOpenPicker, laborRat
         />
       </div>
       <div className="lib-form-group">
-        <label className="template-checkbox-label">
-          <input
-            type="checkbox"
-            checked={form.quickJob}
-            onChange={(e) => set("quickJob", e.target.checked)}
-          />
-          Quick Job{" "}
-          <span className="lib-label-hint">(show in quick-add panel on quote screen)</span>
-        </label>
+        <ToggleField
+          checked={form.quickJob}
+          onChange={(v) => set("quickJob", v)}
+          label="Quick Job"
+          hint="(show in quick-add panel on quote screen)"
+        />
       </div>
       <PartsEditor
         parts={form.parts}
@@ -458,6 +472,7 @@ function TemplatesPage({ onApplyTemplate, onSwitchToQuote, onToast }: {
     const library = await getPartsLibrary();
     setForm({
       name: t.name,
+      opCode: t.opCode || "",
       description: t.description || "",
       laborHrs: t.laborHrs?.toString() || "",
       laborCost: t.laborCost?.toString() || "",
@@ -490,6 +505,7 @@ function TemplatesPage({ onApplyTemplate, onSwitchToQuote, onToast }: {
     const library = await getPartsLibrary();
     const data = {
       name: form.name.trim(),
+      opCode: form.opCode.trim() || undefined,
       description: form.description,
       laborHrs: Number(form.laborHrs) || 0,
       laborCost: Number(form.laborCost) || 0,
@@ -504,10 +520,13 @@ function TemplatesPage({ onApplyTemplate, onSwitchToQuote, onToast }: {
             ...(ep > 0 ? { estimatedPrice: ep } : {}),
           };
         }
+        // Use stored partId directly; fall back to name+partNumber lookup only for manually-typed parts
         let partId = p.partId || "";
-        if (!partId && p.name) {
+        if (!partId && (p.name || p.partNumber)) {
           const match = library.find(
-            (lp) => lp.name === p.name && (!p.partNumber || lp.partNumber === p.partNumber),
+            (lp) =>
+              lp.name === p.name &&
+              (!p.partNumber || lp.partNumber === p.partNumber),
           );
           partId = match?.id || "";
         }
@@ -535,6 +554,7 @@ function TemplatesPage({ onApplyTemplate, onSwitchToQuote, onToast }: {
   };
 
   const handleAddFromInventory = (part: {
+    id: string;
     partNumber: string;
     name: string;
     price: string;
@@ -548,6 +568,7 @@ function TemplatesPage({ onApplyTemplate, onSwitchToQuote, onToast }: {
         ...f.parts,
         {
           type: "specific" as const,
+          partId: part.id,
           partNumber: part.partNumber || "",
           name: part.name,
           price: part.price || "",
@@ -611,6 +632,9 @@ function TemplatesPage({ onApplyTemplate, onSwitchToQuote, onToast }: {
                     <div className="page-item-info">
                       <div className="page-item-name-row">
                         <strong className="page-item-name">{t.name}</strong>
+                        {t.opCode && (
+                          <span className="template-opcode-tag">{t.opCode}</span>
+                        )}
                         {t.jobCategory && (
                           <span className="template-category-tag">{t.jobCategory}</span>
                         )}

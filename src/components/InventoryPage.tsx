@@ -144,17 +144,17 @@ function InventoryPage({
         )}
       </div>
 
-      <div className="inv-tabs">
+      <div className="section-tabs">
         <button
           type="button"
-          className={`inv-tab${subView === "parts" ? " inv-tab--active" : ""}`}
+          className={`section-tab${subView === "parts" ? " section-tab--active" : ""}`}
           onClick={() => { setSubView("parts"); setView("list"); }}
         >
           Parts Library
         </button>
         <button
           type="button"
-          className={`inv-tab${subView === "estimates" ? " inv-tab--active" : ""}`}
+          className={`section-tab${subView === "estimates" ? " section-tab--active" : ""}`}
           onClick={() => setSubView("estimates")}
         >
           Part Price Guide

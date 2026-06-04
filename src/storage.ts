@@ -467,9 +467,6 @@ export const DEFAULT_WARRANTY_POLICIES: WarrantyPolicy[] = [
     label: "Batteries",
     category: "Electrical",
     subcategory: ["Batteries (Lead-Acid)", "Batteries (Lithium-Ion)", "Batteries (AGM)"],
-    swapMaxMonths: 18,
-    billOutMultiplier: 1.735,
-    billOutMaxMonths: 24,
     tiers: [
       { id: "bat-t1", label: "SWAP",         maxMonths: 18, maxMiles: null, partsPct: 100, laborPct: 0 },
       { id: "bat-t2", label: "Bill Out",     maxMonths: 24, maxMiles: null, partsPct: 100, laborPct: 0 },

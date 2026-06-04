@@ -345,14 +345,14 @@ function JobCard({
             </div>
             {warrantyResult && (
               <div className="job-warranty-preview">
-                {warrantyResult.tier === null && !warrantyResult.isSwap ? (
+                {warrantyResult.tier === null ? (
                   <span className="job-warranty-preview-none">Out of warranty — no coverage applies.</span>
                 ) : (
                   <>
                     <span className="job-warranty-preview-policy">{selectedWarrantyPolicy?.label}</span>
                     {" — "}
                     <span className="job-warranty-preview-tier">
-                      {warrantyResult.isSwap ? "Swap Period" : warrantyResult.tier?.label}
+                      {warrantyResult.tier?.label}
                     </span>
                     <div className="job-warranty-preview-amounts">
                       {warrantyResult.warrantyPaysCost > 0 && (

@@ -371,17 +371,6 @@ main {
 }
 
 @media (min-width: 1000px) {
-  .quote-actions {
-    position: sticky;
-    bottom: 48px; /* fixed header (~58px) + tab nav (~44px) */
-    z-index: 2;
-    align-self: flex-end;
-    background: var(--card-bg);
-    padding: 0.75em 1em;
-    border-radius: 8px;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
-  }
   .mobile-sidebar-bar {
     display: none;
   }
@@ -502,6 +491,38 @@ main {
   font-size: 0.88em;
 }
 
+/* ── Quote history panel (inline tab on quote screen) ────────────────────── */
+
+.quote-history-item {
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.quote-history-item:hover {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px var(--accent-ring);
+}
+
+.quote-history-item-select {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  box-shadow: none;
+  color: var(--text-primary);
+}
+
+.quote-history-item-select:hover {
+  background: none;
+  box-shadow: none;
+}
+
 /* Calculator Container */
 .calculator-container {
   display: flex;
@@ -515,18 +536,225 @@ main {
   margin: 0 auto;
 }
 
+/* ── Quote compose two-panel layout ─────────────────────────────────────── */
+
+.quote-compose-layout {
+  display: grid;
+  grid-template-columns: 1fr 284px;
+  gap: 1.1rem;
+  align-items: start;
+}
+
+.quote-compose-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.quote-compose-aside {
+  position: sticky;
+  top: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.quote-aside-number {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: 10px;
+  padding: 0.65rem 1rem 0.75rem;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.quote-aside-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.quote-aside-num {
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.quote-aside-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 0.85rem 0.9rem;
+  box-shadow: var(--shadow-md);
+}
+
+.quote-aside-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .quote-compose-layout {
+    grid-template-columns: 1fr;
+  }
+  .quote-compose-aside {
+    position: static;
+  }
+}
+
+/* ── Customer + Vehicle side-by-side row ─────────────────────────────────── */
+
+.quote-info-vehicle-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1rem;
+}
+
+.quote-info-vehicle-row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+@container (max-width: 560px) {
+  .quote-info-vehicle-row {
+    flex-direction: column;
+  }
+}
+
 /* Quote Info Section */
 .quote-info-section {
   background: var(--card-bg);
   border-radius: 10px;
-  padding: 0.9em 1.25em;
+  padding: 0.75em 1em;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65em;
+}
+
+/* ── Shared info card (customer + vehicle read-only view) ────────────────── */
+
+.info-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--card-bg);
+}
+
+.info-card-header {
+  display: flex;
   align-items: center;
-  gap: 1em;
-  flex-wrap: wrap;
-  width: 100%;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--opacity);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.info-card-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.info-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding: 0.45rem 0.75rem 0.55rem;
+}
+
+.info-card-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  min-height: 1.6rem;
+}
+
+.info-card-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.info-card-notes {
+  white-space: pre-wrap;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.info-card-vin {
+  font-family: monospace;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+
+.info-card-action-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.12s, background 0.12s, border-color 0.12s;
+}
+
+.info-card-action-btn:hover {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: var(--accent);
+}
+
+.info-card-linked {
+  font-size: 0.72rem;
+  color: var(--accent);
+  font-style: italic;
+  margin-top: 0.25rem;
+}
+
+/* "Done" button after form fields */
+.info-done-btn {
+  align-self: flex-end;
+  margin-top: 0.25rem;
 }
 
 .quote-number {
@@ -538,6 +766,7 @@ main {
   color: var(--accent-text);
   border-radius: 8px;
   min-width: 80px;
+  max-width: 120px;
   flex-shrink: 0;
 }
 
@@ -606,25 +835,13 @@ main {
 .results-section {
   background: var(--card-bg);
   border-radius: 10px;
-  padding: 1.25em 1.5em;
+  padding: 1em 1.15em;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
   width: 100%;
   overflow: hidden;
 }
 
-.rates-section h3,
-.jobs-section h3,
-.discount-section h3,
-.results-section h3 {
-  margin: 0 0 1em 0;
-  color: var(--text-primary);
-  font-size: 0.95em;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.6em;
-}
 
 /* Rates Grid */
 .rates-grid {
@@ -731,11 +948,10 @@ main {
   margin-bottom: 1em;
 }
 
-.jobs-header h3 {
-  margin: 0;
-  border: none;
-  padding: 0;
+.jobs-header .section-heading {
+  margin-bottom: 0;
 }
+
 
 #jobs-container {
   display: flex;
@@ -1177,11 +1393,10 @@ button[disabled] {
   margin-bottom: 0.75rem;
 }
 
-.service-rec-title {
-  font-size: 0.95em;
-  font-weight: 700;
-  color: var(--text-primary);
+.service-rec-header .section-heading {
+  margin-bottom: 0;
 }
+
 
 .service-rec-subtitle {
   font-size: 0.8em;
@@ -1373,23 +1588,97 @@ button[disabled] {
   margin-bottom: 0;
 }
 
-.menu-price-check {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  font-size: 0.75rem;
-  font-weight: 400;
+/* ── Section heading utility — use className="section-heading" on h3 ─────── */
+
+.section-heading {
+  margin: 0 0 0.85em 0;
   color: var(--text-secondary);
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-left: 3px solid var(--accent);
+  padding-left: 0.55rem;
+}
+
+/* ── Shared dropdown list (search/autocomplete results) ─────────────────── */
+
+.dropdown-list {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius, 8px);
+  box-shadow: var(--shadow-md);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.dropdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  box-shadow: none;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover {
+  background: var(--bg-dark);
+}
+
+/* ── ToggleField — shared checkbox toggle ────────────────────────────────── */
+
+.toggle-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
   cursor: pointer;
   -webkit-user-select: none;
   user-select: none;
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  min-height: 2.25rem;  /* touch target */
+  padding: 0.15rem 0;
 }
 
-.menu-price-check input[type="checkbox"] {
-  cursor: pointer;
+.toggle-field input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
   accent-color: var(--accent);
-  width: 13px;
-  height: 13px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.toggle-field-label {
+  font-weight: 500;
+}
+
+.toggle-field-hint {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.toggle-field-badge {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-secondary);
 }
 
 .menu-price-badge {
@@ -1405,24 +1694,6 @@ button[disabled] {
   color: var(--accent);
 }
 
-.template-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.92em;
-  color: var(--text-primary);
-  cursor: pointer;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.template-checkbox-label input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--accent);
-  cursor: pointer;
-  flex-shrink: 0;
-}
 
 /* ── Part Category Badge (Inventory list) ────────────────────────────────── */
 
@@ -1655,14 +1926,16 @@ button[disabled] {
 
 /* ── Inventory sub-tabs ──────────────────────────────────────────────────── */
 
-.inv-tabs {
+/* ── Section tabs — universal underline tabs (desktop) / pill tabs (mobile) */
+
+.section-tabs {
   display: flex;
   gap: 2px;
   border-bottom: 2px solid var(--border-color);
   margin-bottom: 1.25rem;
 }
 
-.inv-tab {
+.section-tab {
   padding: 0.45rem 1rem;
   font-size: 0.85em;
   font-weight: 600;
@@ -1673,21 +1946,61 @@ button[disabled] {
   cursor: pointer;
   margin-bottom: -2px;
   border-radius: 4px 4px 0 0;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s;
+  box-shadow: none;
+  white-space: nowrap;
 }
 
-.inv-tab:hover {
+.section-tab:hover {
   color: var(--text-primary);
   background: var(--accent-ring);
   box-shadow: none;
 }
 
-.inv-tab--active {
+.section-tab--active {
   color: var(--accent);
   border-bottom-color: var(--accent);
   background: none;
+}
+
+.section-tab--active:hover {
+  background: none;
+}
+
+@media (max-width: 600px) {
+  .section-tabs {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    border-bottom: none;
+    margin-bottom: 1rem;
+  }
+
+  .section-tab {
+    padding: 0.38rem 1rem;
+    border: 1px solid var(--border-color);
+    border-bottom-color: var(--border-color);
+    border-radius: 20px;
+    background: var(--card-bg);
+    margin-bottom: 0;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .section-tab:hover {
+    border-color: var(--accent);
+    background: var(--card-bg);
+  }
+
+  .section-tab--active {
+    background: var(--accent);
+    color: var(--accent-text);
+    border-color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  .section-tab--active:hover {
+    background: var(--accent);
+  }
 }
 
 /* ── Part Price Guide ────────────────────────────────────────────────────── */
@@ -1900,32 +2213,6 @@ button[disabled] {
   margin-bottom: 0.75rem;
 }
 
-.ss-override-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85em;
-  font-weight: 600;
-  color: var(--text-primary);
-  cursor: pointer;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.ss-override-label input[type="checkbox"] {
-  width: 15px;
-  height: 15px;
-  cursor: pointer;
-  accent-color: var(--accent);
-  flex-shrink: 0;
-}
-
-.ss-override-auto {
-  margin-left: auto;
-  font-size: 0.78em;
-  font-weight: 400;
-  color: var(--text-secondary);
-}
 
 .ss-override-row {
   display: flex;
@@ -2216,21 +2503,12 @@ button[disabled] {
 .notes-section {
   background: var(--card-bg);
   border-radius: 10px;
-  padding: 1.25em 1.5em;
+  padding: 1em 1.15em;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--border-color);
   width: 100%;
 }
 
-.notes-section h3 {
-  margin: 0 0 1em 0;
-  color: var(--text-primary);
-  font-size: 0.95em;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.6em;
-}
 
 .notes-textarea {
   width: 100%;
@@ -3195,14 +3473,17 @@ button[disabled] {
 .page-item-meta {
   font-size: 0.78em;
   color: var(--text-secondary);
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .page-item-desc {
   font-size: 0.78em;
   color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
 }
 
 .page-item-actions {
@@ -3240,38 +3521,7 @@ button[disabled] {
   margin-top: 0;
 }
 
-/* ── Settings sub-nav ───────────────────────────────────────────────────── */
-
-.settings-subnav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 1.25rem;
-}
-
-.settings-subnav-btn {
-  padding: 0.38rem 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: 20px;
-  background: var(--card-bg);
-  color: var(--text-secondary);
-  font-size: 0.87rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-  white-space: nowrap;
-}
-
-.settings-subnav-btn:hover {
-  color: var(--text-primary);
-  border-color: var(--accent);
-}
-
-.settings-subnav-btn.active {
-  background: var(--accent);
-  color: var(--accent-text);
-  border-color: var(--accent);
-}
+/* settings-subnav now uses section-tabs — see section-tabs rule above */
 
 /* ── Settings spacing utilities ─────────────────────────────────────────── */
 
@@ -3459,8 +3709,13 @@ button[disabled] {
   align-items: center;
   gap: 0.5rem;
   padding: 0.55rem 0.75rem;
-  border-bottom: 1px solid var(--border-color);
   background: var(--opacity);
+  color: var(--text-secondary);
+}
+
+/* Show the border-bottom only when the list is visible */
+.template-search-panel:focus-within .template-search-bar {
+  border-bottom: 1px solid var(--border-color);
 }
 
 .template-search-bar input {
@@ -3482,11 +3737,16 @@ button[disabled] {
   color: var(--text-secondary);
 }
 
+/* List hidden by default; shown when any element inside the panel has focus */
 .template-search-list {
   max-height: 260px;
   overflow-y: auto;
-  display: flex;
+  display: none;
   flex-direction: column;
+}
+
+.template-search-panel:focus-within .template-search-list {
+  display: flex;
 }
 
 .template-search-empty {
@@ -3502,8 +3762,14 @@ button[disabled] {
   gap: 0.75rem;
   padding: 0.6rem 0.75rem;
   border-bottom: 1px solid var(--border-color);
+  border-radius: 0;
   transition: background 0.1s;
   cursor: pointer;
+  width: 100%;
+  text-align: left;
+  background: none;
+  color: var(--text-primary);
+  box-shadow: none;
 }
 
 .template-search-item:last-child {
@@ -3512,6 +3778,7 @@ button[disabled] {
 
 .template-search-item:hover {
   background: var(--opacity);
+  box-shadow: none;
 }
 
 .template-search-info {
@@ -3523,6 +3790,25 @@ button[disabled] {
   font-size: 0.88em;
 }
 
+.template-search-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  flex-wrap: wrap;
+}
+
+.template-search-opcode {
+  font-size: 0.74em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.1em 0.45em;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--accent-text);
+  flex-shrink: 0;
+}
+
 .template-search-meta {
   font-size: 0.8em;
   color: var(--text-secondary);
@@ -3531,19 +3817,34 @@ button[disabled] {
 .template-search-desc {
   font-size: 0.78em;
   color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+/* Op code badge in template list view */
+.template-opcode-tag {
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 0.1em 0.45em;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--accent-text);
+  flex-shrink: 0;
 }
 
 /* ── Vehicle Section ───────────────────────────────────────────────────────── */
 
 .vehicle-section {
-  background: var(--job-card-bg);
+  background: var(--card-bg);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 1em;
-  box-shadow: var(--shadow-sm);
+  border-radius: 10px;
+  padding: 0.9em 1.25em;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75em;
 }
 
 .vehicle-picker {
@@ -3631,23 +3932,23 @@ button[disabled] {
   margin-bottom: 0.75em;
 }
 
-.vehicle-section h3 {
-  font-size: 0.88em;
-  font-weight: 700;
-  margin-bottom: 0;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 .vehicle-grid {
-  display: grid;
-  grid-template-columns: 90px 1fr 1fr 1fr;
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.65rem;
 }
 
+.vehicle-grid .form-group {
+  flex: 1 1 130px;
+  min-width: 0;
+}
+
+.vehicle-year {
+  flex: 0 1 90px;
+}
+
 .vehicle-vin {
-  grid-column: 1 / -1;
+  flex: 1 1 100%;
 }
 
 /* ── Business info (Settings) ──────────────────────────────────────────────── */
@@ -3705,7 +4006,7 @@ button[disabled] {
 
 .vin-input-row input {
   flex: 1;
-  min-width: min(200px, 100%);
+  min-width: min(18em, 100%);
   font-family: monospace;
   letter-spacing: 0.05em;
 }
@@ -4040,43 +4341,6 @@ details[open] .vin-recall-summary::before {
   position: relative;
 }
 
-.proration-part-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 20;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  max-height: 260px;
-  overflow-y: auto;
-  margin-top: 2px;
-}
-
-.proration-part-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  text-align: left;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  color: var(--text-primary);
-}
-
-.proration-part-item:last-child {
-  border-bottom: none;
-}
-
-.proration-part-item:hover {
-  background: var(--opacity);
-}
-
 .proration-part-name {
   font-size: 0.9rem;
   font-weight: 500;
@@ -4148,19 +4412,10 @@ details[open] .vin-recall-summary::before {
   color: #991b1b;
 }
 
-.proration-swap-msg,
 .proration-none-msg {
   font-size: 0.9rem;
   padding: 0.65rem 0.9rem;
   border-radius: var(--radius);
-}
-
-.proration-swap-msg {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.proration-none-msg {
   background: #fee2e2;
   color: #991b1b;
 }
@@ -5115,20 +5370,19 @@ details[open] .vin-recall-summary::before {
 }
 
 .btn-back {
-  background: none;
+  background-color: transparent;
   border: none;
-  padding: 0;
+  padding: 2px 8px;
   font-size: 0.78rem;
   color: var(--accent);
   cursor: pointer;
   text-align: left;
-  transition: color 0.12s;
+  transition: color 0.12s, background-color 0.12s;
   box-shadow: none;
 }
 
 .btn-back:hover {
-  color: var(--accent-hover);
-  box-shadow: none;
+  color: var(--accent-text);
 }
 
 .customer-detail-header {
@@ -5260,44 +5514,19 @@ details[open] .vin-recall-summary::before {
   flex: 1;
 }
 
-.customer-dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 200;
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-}
+/* customer-dropdown container → uses .dropdown-list utility */
 
 .customer-dropdown-item {
-  display: flex;
+  flex-direction: row;
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
-  width: 100%;
   padding: 0.55rem 0.85rem;
-  background: none;
-  border: none;
-  border-bottom: 1px solid var(--border-color);
-  cursor: pointer;
-  text-align: left;
-  color: var(--text-primary);
-  font-size: 0.9rem;
   transition: background 0.1s;
-  box-shadow: none;
-}
-
-.customer-dropdown-item:last-child {
-  border-bottom: none;
 }
 
 .customer-dropdown-item:hover {
   background: var(--opacity);
-  box-shadow: none;
 }
 
 .customer-dropdown-name {
@@ -5551,18 +5780,6 @@ details[open] .vin-recall-summary::before {
   }
 }
 
-/* ── Responsive: vehicle grid ───────*/
-@media (max-width: 700px) {
-  .vehicle-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-@media (max-width: 380px) {
-  .vehicle-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* ── Mobile: single column ── */
 @media (max-width: 999px) {
@@ -6010,4 +6227,343 @@ details[open] .vin-recall-summary::before {
   accent-color: var(--accent);
   width: 14px;
   height: 14px;
+}
+
+/* ── Quote Info — updated layout ─────────────────────────────────────────── */
+
+/* The section is now a vertical stack (search + form) */
+.quote-info-section {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* ── Customer Search ─────────────────────────────────────────────────────── */
+
+.customer-search-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.customer-search-input-wrap {
+  width: 100%;
+}
+
+.customer-search-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 7px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.customer-linked-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--accent);
+  color: var(--accent-text);
+  border-radius: 7px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.customer-linked-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.customer-linked-clear {
+  background: none;
+  border: none;
+  color: var(--accent-text);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  opacity: 0.8;
+  padding: 0 0.1rem;
+  flex-shrink: 0;
+  box-shadow: none;
+}
+
+.customer-linked-clear:hover {
+  opacity: 1;
+  box-shadow: none;
+  background: none;
+}
+
+.customer-dropdown-empty {
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ── Customer Form Fields ────────────────────────────────────────────────── */
+
+.customer-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.customer-form-fields--compact .lib-form-group label {
+  font-size: 0.78rem;
+}
+
+/* ── Phones Editor ───────────────────────────────────────────────────────── */
+
+.phones-editor {
+  width: 100%;
+}
+
+.phones-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.phones-editor-header label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.phones-editor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.phones-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.phones-editor-label-select {
+  flex: 0 0 100px;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+}
+
+.phones-editor-number {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+/* ── Tax / Taxable row ───────────────────────────────────────────────────── */
+
+.customer-tax-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+
+.customer-tax-id-group {
+  flex: 1;
+  min-width: 160px;
+  margin: 0;
+}
+
+.customer-tax-exempt-badge {
+  display: inline-block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fde047;
+}
+
+[data-theme="dark"] .customer-tax-exempt-badge {
+  background: #422006;
+  color: #fde047;
+  border-color: #713f12;
+}
+
+.quote-taxable-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0 0.1rem;
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.35rem;
+}
+
+/* ── Shared quote modifiers container (discount + shop supplies + taxable) */
+
+.quote-modifiers {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1em 1.25em;
+  box-shadow: var(--shadow-md);
+}
+
+/* Strip individual card chrome from children inside the shared container */
+.quote-modifiers .discount-section,
+.quote-modifiers .ss-override-section {
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.quote-modifiers .section-heading,
+.quote-modifiers .ss-override-section {
+  margin-bottom: 0;
+}
+
+/* Taxable toggle — vertically centered, no card chrome needed here */
+.quote-taxable-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  padding-top: 0.15rem;
+}
+
+
+@media (max-width: 600px) {
+  .quote-modifiers {
+    flex-direction: column;
+  }
+
+  .quote-modifiers .discount-section,
+  .quote-modifiers .ss-override-section,
+  .quote-modifiers .quote-taxable-section {
+    flex: unset;
+    width: 100%;
+  }
+}
+
+.quote-tax-id-badge {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* ── Vehicle Cards ───────────────────────────────────────────────────────── */
+
+.vehicle-picker-search {
+  width: 100%;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.vehicle-picker-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.vehicle-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--card-bg);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.vehicle-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+.vehicle-card--selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--card-bg));
+  box-shadow: 0 0 0 2px var(--accent-ring);
+}
+
+.vehicle-card-select {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.55rem 0.8rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: none;
+  color: var(--text-primary);
+}
+
+.vehicle-card-select:hover {
+  background: none;
+  box-shadow: none;
+}
+
+.vehicle-card-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.vehicle-card-meta {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.vehicle-card--selected .vehicle-card-label {
+  color: var(--accent);
+}
+
+.vehicle-card-delete {
+  flex-shrink: 0;
+  margin-right: 0.4rem;
+  opacity: 0.55;
+}
+
+.vehicle-card-delete:hover {
+  opacity: 1;
 }

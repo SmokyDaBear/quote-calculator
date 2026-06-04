@@ -5,7 +5,7 @@ import type { LibraryPart } from '../types/index';
 function PartPickerModal({ isOpen, onClose, onAddPart }: {
   isOpen: boolean;
   onClose: () => void;
-  onAddPart: (part: { partNumber: string; name: string; price: string; quantity: number; cost?: string; msrp?: string }) => void;
+  onAddPart: (part: { id: string; partNumber: string; name: string; price: string; quantity: number; cost?: string; msrp?: string }) => void;
 }) {
   const [parts, setParts] = useState<LibraryPart[]>([]);
   const [search, setSearch] = useState('');
@@ -67,6 +67,7 @@ function PartPickerModal({ isOpen, onClose, onAddPart }: {
                   className="btn-small btn-success"
                   onClick={() => {
                     onAddPart({
+                      id: p.id,
                       partNumber: p.partNumber || '',
                       name: p.name,
                       price: p.price.toString(),

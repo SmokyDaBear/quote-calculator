@@ -38,6 +38,7 @@ const TEMPLATE_FIELDS: CsvField[] = [
   { key: "description", label: "Description", required: false },
   { key: "laborHrs", label: "Labor Hours", required: false },
   { key: "laborCost", label: "Labor Cost ($)", required: false },
+  { key: "opCode", label: "Op Code", required: false },
   { key: "mileageInterval", label: "Mileage Interval", required: false },
   { key: "quickJob", label: "Quick Job", required: false },
   { key: "parts", label: "Parts (JSON)", required: false, json: true },
@@ -455,6 +456,8 @@ export function CSVLoader({
           mapping.quickJob ? row[mapping.quickJob]?.toLowerCase() : "";
         const jobCategoryRaw =
           mapping.jobCategory ? row[mapping.jobCategory]?.trim() : "";
+        const opCodeRaw =
+          mapping.opCode ? row[mapping.opCode]?.trim().toUpperCase() : "";
         saves.push(
           saveJobTemplate({
             ...(templateId ? { id: templateId } : {}),
@@ -467,6 +470,7 @@ export function CSVLoader({
             mileageInterval: miRaw ? Number(miRaw) || null : null,
             quickJob: qjRaw === "true" || qjRaw === "1" || qjRaw === "yes",
             ...(jobCategoryRaw ? { jobCategory: jobCategoryRaw as never } : {}),
+            ...(opCodeRaw ? { opCode: opCodeRaw } : {}),
             parts: parts as never[],
           }),
         );

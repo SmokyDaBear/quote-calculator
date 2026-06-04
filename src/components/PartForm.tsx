@@ -1,4 +1,5 @@
 import { CATEGORY_NAMES, getSubcategories } from "../utils/partCategories";
+import { ToggleField } from "./forms/ToggleField";
 import { calculateSellPrice } from "../utils/partsMarkup";
 import type { MarkupBracket } from "../types/index";
 
@@ -103,14 +104,11 @@ function PartForm({
         <div className="lib-form-group">
           <div className="lib-label-row">
             <label>Sell Price ($)</label>
-            <label className="menu-price-check">
-              <input
-                type="checkbox"
-                checked={form.menuPrice}
-                onChange={(e) => handleMenuPriceChange(e.target.checked)}
-              />
-              <span>Menu price</span>
-            </label>
+            <ToggleField
+              checked={form.menuPrice}
+              onChange={handleMenuPriceChange}
+              label="Menu price"
+            />
           </div>
           <input
             type="number"

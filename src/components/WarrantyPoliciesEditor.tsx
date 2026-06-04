@@ -21,9 +21,6 @@ function newPolicy(): WarrantyPolicy {
     category: "",
     subcategory: [],
     tiers: [newTier()],
-    swapMaxMonths: null,
-    billOutMultiplier: 1.0,
-    billOutMaxMonths: null,
   };
 }
 
@@ -162,6 +159,18 @@ export default function WarrantyPoliciesEditor({
                 />
               </div>
 
+              {/* Description */}
+              <div className="lib-form-group">
+                <label>Description <span className="wpe-optional">(optional)</span></label>
+                <textarea
+                  aria-label="Policy description"
+                  className="lib-textarea"
+                  placeholder="Describe this warranty policy, coverage conditions, exclusions…"
+                  value={selected.description ?? ""}
+                  onChange={(e) => updateSelected({ description: e.target.value || undefined })}
+                />
+              </div>
+
               {/* Category & Subcategories */}
               <div className="wpe-policy-meta">
                 <div className="lib-form-group wpe-meta-field">
@@ -217,43 +226,6 @@ export default function WarrantyPoliciesEditor({
                 )}
               </div>
 
-              {/* Bill-out config */}
-              <div className="wpe-policy-config">
-                <div className="lib-form-group wpe-config-field">
-                  <label>Swap Period (months)</label>
-                  <input
-                    aria-label="Swap period in months"
-                    type="number"
-                    min="0"
-                    placeholder="none"
-                    value={selected.swapMaxMonths ?? ""}
-                    onChange={(e) => updateSelected({ swapMaxMonths: numOrNull(e.target.value) })}
-                  />
-                </div>
-                <div className="lib-form-group wpe-config-field">
-                  <label>Bill-Out Multiplier</label>
-                  <input
-                    aria-label="Bill-out multiplier"
-                    type="number"
-                    min="1"
-                    step="0.001"
-                    placeholder="1.0"
-                    value={selected.billOutMultiplier}
-                    onChange={(e) => updateSelected({ billOutMultiplier: parseFloat(e.target.value) || 1 })}
-                  />
-                </div>
-                <div className="lib-form-group wpe-config-field">
-                  <label>Bill-Out Max Months</label>
-                  <input
-                    aria-label="Bill-out max months"
-                    type="number"
-                    min="0"
-                    placeholder="none"
-                    value={selected.billOutMaxMonths ?? ""}
-                    onChange={(e) => updateSelected({ billOutMaxMonths: numOrNull(e.target.value) })}
-                  />
-                </div>
-              </div>
 
               {/* Tiers table */}
               <div className="markup-matrix-wrap wpe-tiers-wrap">

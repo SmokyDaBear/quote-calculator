@@ -274,12 +274,12 @@ function SettingsPage({
         <h2>Settings</h2>
       </div>
 
-      <nav className="settings-subnav" aria-label="Settings sections">
+      <nav className="section-tabs" aria-label="Settings sections">
         {SETTINGS_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
-            className={`settings-subnav-btn${activeTab === tab.id ? " active" : ""}`}
+            className={`section-tab${activeTab === tab.id ? " section-tab--active" : ""}`}
             onClick={() => setActiveTab(tab.id)}
           >
             {tab.label}

@@ -284,6 +284,8 @@ export const PART_CATEGORIES = {
     "A/C Driers / Accumulators",
     "Blend Door Actuators",
     "Heater Control Valves",
+    "Compressor Clutches",
+    "Compressor Oil"
   ],
   Misc: [
     "Hardware",
