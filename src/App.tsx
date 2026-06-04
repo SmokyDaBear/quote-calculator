@@ -212,6 +212,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     el.style.setProperty("--accent", colors.accent);
     el.style.setProperty("--accent-hover", colors.accentHover);
     el.style.setProperty("--accent-ring", colors.accentRing);
+    el.style.setProperty("--accent-text", colors.accentText);
     el.style.setProperty("--success", colors.accent);
     el.style.setProperty("--success-hover", colors.accentHover);
     localStorage.setItem(ACCENT_KEY, accent);

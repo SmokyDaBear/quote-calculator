@@ -26,49 +26,47 @@ function HorizontalScrollContainer({
     requestAnimationFrame(updateScrollState);
   }, [children]);
 
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -scrollAmount, behavior: "smooth" });
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: scrollAmount, behavior: "smooth" });
+
   return (
-    <div
-      className={
-        "h-scroll-wrap" +
-        (hideScrollbar ? " h-scroll-wrap--hide-scrollbar" : "")
-      }
-    >
+    <div className={"h-scroll-wrap" + (hideScrollbar ? " h-scroll-wrap--hide-scrollbar" : "")}>
+      {/* Desktop: buttons are absolute overlays via CSS */}
       {canScrollLeft && (
-        <button
-          type="button"
-          className="h-scroll-btn h-scroll-btn--left"
-          onClick={() =>
-            scrollRef.current?.scrollBy({
-              left: -scrollAmount,
-              behavior: "smooth",
-            })
-          }
-          aria-label="Scroll left"
-        >
+        <button type="button" className="h-scroll-btn h-scroll-btn--left h-scroll-btn--overlay" onClick={scrollLeft} aria-label="Scroll left">
           ‹
         </button>
       )}
-      <div
-        className={trackClassName + " scroll-track"}
-        ref={scrollRef}
-        onScroll={updateScrollState}
-      >
+      <div className={trackClassName + " scroll-track"} ref={scrollRef} onScroll={updateScrollState}>
         {children}
       </div>
       {canScrollRight && (
-        <button
-          type="button"
-          className="h-scroll-btn h-scroll-btn--right"
-          onClick={() =>
-            scrollRef.current?.scrollBy({
-              left: scrollAmount,
-              behavior: "smooth",
-            })
-          }
-          aria-label="Scroll right"
-        >
+        <button type="button" className="h-scroll-btn h-scroll-btn--right h-scroll-btn--overlay" onClick={scrollRight} aria-label="Scroll right">
           ›
         </button>
+      )}
+      {/* Mobile: buttons rendered below the track as a row */}
+      {(canScrollLeft || canScrollRight) && (
+        <div className="h-scroll-btns-mobile">
+          <button
+            type="button"
+            className="h-scroll-btn-mobile"
+            onClick={scrollLeft}
+            disabled={!canScrollLeft}
+            aria-label="Scroll left"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            className="h-scroll-btn-mobile"
+            onClick={scrollRight}
+            disabled={!canScrollRight}
+            aria-label="Scroll right"
+          >
+            ›
+          </button>
+        </div>
       )}
     </div>
   );

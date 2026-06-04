@@ -49,10 +49,6 @@
   --modal-overlay: rgba(0, 0, 0, 0.65);
 }
 
-[data-theme="dark"] header {
-  background-color: #1f2d3d;
-}
-
 [data-theme="dark"] select {
   color-scheme: dark;
 }
@@ -266,6 +262,7 @@ h1 {
 
 .toggle-switch.active::after {
   transform: translateX(20px);
+  background: var(--accent-text);
 }
 
 /* Modal */
@@ -896,7 +893,7 @@ main {
 
 .discount-toggle-btn.active {
   background: var(--accent);
-  color: #ffffff;
+  color: var(--accent-text);
 }
 
 .discount-toggle-btn.active:hover {
@@ -1417,6 +1414,8 @@ button[disabled] {
   scrollbar-color: transparent transparent;
 }
 
+/* ── Desktop overlay buttons ─────────────────────────────────────────────── */
+
 .h-scroll-btn {
   position: absolute;
   top: 0;
@@ -1451,6 +1450,7 @@ button[disabled] {
   opacity: 1;
   z-index: -1;
 }
+
 .h-scroll-btn--left {
   left: 0;
   background: linear-gradient(to right, var(--card-bg) 55%, transparent);
@@ -1469,6 +1469,48 @@ button[disabled] {
 .h-scroll-btn--right::before {
   background: linear-gradient(to left, var(--accent) 55%, var(--accent-hover));
   border-radius: 6px;
+}
+
+/* ── Mobile below-track buttons ──────────────────────────────────────────── */
+
+.h-scroll-btns-mobile {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .h-scroll-btn--overlay {
+    display: none;
+  }
+
+  .h-scroll-btns-mobile {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+  }
+
+  .h-scroll-btn-mobile {
+    flex: 1;
+    height: 32px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+  }
+
+  .h-scroll-btn-mobile:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+
+  .h-scroll-btn-mobile:not(:disabled):hover {
+    background: var(--opacity);
+  }
 }
 
 .service-rec-scroll {
@@ -5015,12 +5057,13 @@ details[open] .vin-recall-summary::before {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #ffffff;
+  background: white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .footer-toggle-track.active .footer-toggle-thumb {
+  background: var(--accent-text);
   transform: translateX(18px);
 }
 
