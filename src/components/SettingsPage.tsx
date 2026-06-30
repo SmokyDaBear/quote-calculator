@@ -24,6 +24,8 @@ type TSettingsPageProps = {
     address: string;
     logo: string;
     printMessage?: string;
+    workOrderDisclaimer?: string;
+    invoiceWarranty?: string;
   };
   onBusinessChange: (info: TSettingsPageProps["businessInfo"]) => void;
   isDark: boolean;
@@ -407,6 +409,26 @@ function SettingsPage({
                 placeholder={`e.g. "Thank you for choosing ${businessInfo.name || "our shop"}!"`}
                 value={businessInfo?.printMessage || `Thank you for choosing ${businessInfo.name || "our shop"}! We appreciate your business.`}
                 onChange={(e) => setBiz("printMessage", e.target.value)}
+              />
+            </div>
+            <div className="lib-form-group">
+              <label>Work Order Disclaimer</label>
+              <textarea
+                className="lib-textarea"
+                rows={5}
+                placeholder={`Authorization text printed above the signature line on work orders, e.g. "I hereby authorize the above repair work and necessary materials. I grant permission to operate the vehicle for testing or inspection and acknowledge a mechanic's lien on the vehicle to secure repair costs..."`}
+                value={businessInfo?.workOrderDisclaimer ?? ""}
+                onChange={(e) => setBiz("workOrderDisclaimer", e.target.value)}
+              />
+            </div>
+            <div className="lib-form-group">
+              <label>Invoice Warranty</label>
+              <textarea
+                className="lib-textarea"
+                rows={4}
+                placeholder={`Warranty text printed above the signature line on invoices, e.g. "All repairs except where otherwise stated carry a 12 month, 12,000 mile warranty covering material defect or improper installation..."`}
+                value={businessInfo?.invoiceWarranty ?? ""}
+                onChange={(e) => setBiz("invoiceWarranty", e.target.value)}
               />
             </div>
           </div>

@@ -4,6 +4,7 @@ import {
   saveLibraryPart,
   updateLibraryPart,
   deleteLibraryPart,
+  getPartReservations,
 } from "../storage";
 import type { LibraryPart, MarkupBracket } from "../types/index";
 import { CATEGORY_NAMES, getSubcategories } from "../utils/partCategories";
@@ -23,6 +24,7 @@ function InventoryPage({
 }) {
   const [subView, setSubView] = useState<"parts" | "estimates">("parts");
   const [parts, setParts] = useState<LibraryPart[]>([]);
+  const [reservations, setReservations] = useState<Record<string, number>>({});
   const [view, setView] = useState<
     "list" | "new" | { editing: Record<string, unknown> }
   >("list");
@@ -32,7 +34,11 @@ function InventoryPage({
   const [subcategoryFilter, setSubcategoryFilter] = useState("");
   const [page, setPage] = useState(1);
 
-  const refresh = () => getPartsLibrary().then(setParts);
+  const refresh = () =>
+    Promise.all([getPartsLibrary(), getPartReservations()]).then(([p, r]) => {
+      setParts(p);
+      setReservations(r);
+    });
   useEffect(() => {
     refresh();
   }, []);
@@ -63,6 +69,8 @@ function InventoryPage({
       category: p.category || "",
       subcategory: p.subcategory || "",
       menuPrice: p.menuPrice ?? false,
+      qtyOnHand: p.qtyOnHand != null ? String(p.qtyOnHand) : "",
+      binLocation: p.binLocation ?? "",
       _editingId: p.id,
     });
     setView({ editing: p as unknown as Record<string, unknown> });
@@ -80,6 +88,8 @@ function InventoryPage({
       category: form.category,
       subcategory: form.subcategory,
       menuPrice: form.menuPrice,
+      qtyOnHand: form.qtyOnHand !== "" ? Number(form.qtyOnHand) || 0 : undefined,
+      binLocation: form.binLocation.trim() || undefined,
     };
     if (typeof view === "object" && "editing" in view) {
       await updateLibraryPart(view.editing.id as string, data);
@@ -226,6 +236,21 @@ function InventoryPage({
                       Sell ${Number(p.price).toFixed(2)}
                       {p.msrp > 0 && ` · List $${Number(p.msrp).toFixed(2)}`}
                     </span>
+                    {(p.qtyOnHand != null || p.binLocation) && (
+                      <span className="page-item-meta inventory-stock-line">
+                        {p.qtyOnHand != null && (
+                          <>
+                            <span className="stock-pill">On hand: {p.qtyOnHand}</span>
+                            <span className="stock-pill stock-pill--avail">
+                              Available: {(p.qtyOnHand ?? 0) - (reservations[p.id] ?? 0)}
+                            </span>
+                          </>
+                        )}
+                        {p.binLocation && (
+                          <span className="stock-pill stock-pill--bin">Bin: {p.binLocation}</span>
+                        )}
+                      </span>
+                    )}
                     {p.description && (
                       <span className="page-item-desc">{p.description}</span>
                     )}

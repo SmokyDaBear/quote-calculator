@@ -13,6 +13,8 @@ export type PartFormData = {
   category: string;
   subcategory: string;
   menuPrice: boolean;
+  qtyOnHand: string;
+  binLocation: string;
   _editingId?: string;
 };
 
@@ -26,6 +28,8 @@ export const EMPTY_PART_FORM: PartFormData = {
   category: "",
   subcategory: "",
   menuPrice: false,
+  qtyOnHand: "",
+  binLocation: "",
 };
 
 function PartForm({
@@ -157,6 +161,27 @@ function PartForm({
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
+        </div>
+      </div>
+      <div className="lib-form-row two-col">
+        <div className="lib-form-group">
+          <label>Qty On Hand</label>
+          <input
+            type="number"
+            step="1"
+            placeholder="0"
+            value={form.qtyOnHand}
+            onChange={(e) => set("qtyOnHand", e.target.value)}
+          />
+        </div>
+        <div className="lib-form-group">
+          <label>Bin Location</label>
+          <input
+            type="text"
+            placeholder="e.g. A-12"
+            value={form.binLocation}
+            onChange={(e) => set("binLocation", e.target.value)}
+          />
         </div>
       </div>
       <div className="lib-form-group">

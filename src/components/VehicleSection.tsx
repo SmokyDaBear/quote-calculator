@@ -744,12 +744,20 @@ function VehicleSection({
   vehicle,
   onChange,
   customerId,
+  onVehicleIdChange,
 }: {
   vehicle: VehicleFields;
   onChange: (v: VehicleFields) => void;
   customerId: string | null;
+  /** Bubbles the saved vehicle's id (or null) as the user picks/saves/clears. */
+  onVehicleIdChange?: (id: string | null) => void;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const updateSelectedId = (id: string | null) => {
+    setSelectedId(id);
+    onVehicleIdChange?.(id);
+  };
   const [decodedVinData, setDecodedVinData] = useState<
     DecodedVinData | undefined
   >();
@@ -788,7 +796,7 @@ function VehicleSection({
 
   const handleClear = () => {
     onChange(EMPTY_VEHICLE_FIELDS);
-    setSelectedId(null);
+    updateSelectedId(null);
     setDecodedVinData(undefined);
     setIsEditing(true);
   };
@@ -820,7 +828,7 @@ function VehicleSection({
               }}
               selectedId={selectedId}
               onSelectId={(id) => {
-                setSelectedId(id);
+                updateSelectedId(id);
                 if (id) setIsEditing(false);
               }}
               decodedVinData={decodedVinData}

@@ -8,8 +8,9 @@ import {
   saveJobTemplate,
   loadGlobalRates,
 } from "../storage";
-import { calculateProration } from "../utils/proration";
+import { computeTotals } from "../utils/computeTotals";
 import { printQuote } from "../utils/printQuote";
+import { requestPurchaseOrder } from "../utils/poRequest";
 import { EMPTY_CUSTOMER_FORM_DATA } from "../components/CustomerFormFields";
 import type { CustomerFormData } from "../components/CustomerFormFields";
 import type { SsOverride } from "../components/ShopSuppliesOverride";
@@ -22,6 +23,7 @@ import type {
   TemplatePart_Specific,
   Customer,
   WarrantyPolicy,
+  WorkingSublet,
 } from "../types/index";
 
 // ── Shared constants / helpers ───────────────────────────────────────────────
@@ -99,107 +101,43 @@ export function useQuote({
   const [quoteNumber, setQuoteNumber] = useState(1001);
   const [discount, setDiscount] = useState<DiscountState>(EMPTY_DISCOUNT);
   const [ssOverride, setSsOverride] = useState<SsOverride>({ enabled: false, value: "" });
+  const [sublets, setSublets] = useState<WorkingSublet[]>([]);
   const [fillModal, setFillModal] = useState<{ template: JobTemplate } | null>(null);
   const jobCounter = jobs.length > 0 ? Math.max(...jobs.map((j) => j.id)) : 0;
   // ── Totals ───────────────────────────────────────────────────────────────
 
-  const totals = useMemo(() => {
-    let grandLaborCost = 0;
-    let grandLaborHours = 0;
-    let grandPartsTotal = 0;
-    let grandSsTotal = 0;
-    let grandWarrantyTotal = 0;
-    let grandWarrantyPartsTotal = 0;
+  const subletTotalsInput = useMemo(
+    () => sublets.map((s) => ({ sellPrice: Number(s.sellPrice) || 0, taxable: s.taxable })),
+    [sublets],
+  );
 
-    const jobSummaries = jobs.map((job) => {
-      const partsTotal = job.parts.reduce(
-        (sum, p) => sum + (Number(p.price) || 0) * (Number(p.quantity) || 0),
-        0,
-      );
-      const laborHrs = Number(job.laborHrs) || 0;
-      const laborCost = Number(job.laborCost) || 0;
-      const subtotal = laborCost + partsTotal;
+  const totals = useMemo(
+    () =>
+      computeTotals({
+        jobs, rates, discount, ssOverride, warrantyPolicies, isTaxable,
+        sublets: subletTotalsInput,
+      }),
+    [jobs, rates, discount, ssOverride, warrantyPolicies, isTaxable, subletTotalsInput],
+  );
 
-      grandLaborCost += laborCost;
-      grandLaborHours += laborHrs;
-      grandPartsTotal += partsTotal;
-      grandSsTotal += rates.ssRate * 0.01 * laborCost;
-
-      let warrantyPartsAmount = 0;
-      let warrantyLaborAmount = 0;
-      let warrantyTierLabel = "";
-      let warrantyPolicyName = job.warrantyPolicyName ?? "";
-
-      if (job.warrantyPolicyId && job.warrantyDateBilled && warrantyPolicies.length > 0) {
-        const policy = warrantyPolicies.find((p) => p.id === job.warrantyPolicyId);
-        if (policy) {
-          const milesNum = job.warrantyMileage ? parseFloat(job.warrantyMileage) : undefined;
-          const result = calculateProration(
-            policy,
-            job.warrantyDateBilled,
-            partsTotal,
-            partsTotal,
-            laborCost,
-            laborCost,
-            milesNum,
-          );
-          warrantyPartsAmount = result.warrantyPaysCost;
-          warrantyLaborAmount = result.warrantyPaysLaborCost;
-          warrantyTierLabel = result.tier?.label ?? "";
-          warrantyPolicyName = policy.label;
-        }
-      }
-
-      grandWarrantyTotal += warrantyPartsAmount + warrantyLaborAmount;
-      grandWarrantyPartsTotal += warrantyPartsAmount;
-
-      return {
-        id: job.id,
-        name: job.name || `Job ${job.id}`,
-        laborCost,
-        laborHrs,
-        partsTotal,
-        subtotal,
-        warrantyPartsAmount,
-        warrantyLaborAmount,
-        warrantyPolicyName,
-        warrantyTierLabel,
-      };
+  // ── Sublet handlers ──────────────────────────────────────────────────────
+  const handleAddSublet = () =>
+    setSublets((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), description: "", vendorId: undefined, cost: "", sellPrice: "", taxable: false },
+    ]);
+  const handleUpdateSublet = (id: string, field: keyof WorkingSublet, value: string | boolean) =>
+    setSublets((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
+  const handleRemoveSublet = (id: string) =>
+    setSublets((prev) => prev.filter((s) => s.id !== id));
+  const handleCreatePoForSublet = (s: WorkingSublet) =>
+    requestPurchaseOrder({
+      lineType: "sublet",
+      name: s.description,
+      unitCost: Number(s.cost) || 0,
+      sellPrice: Number(s.sellPrice) || undefined,
+      vendorId: s.vendorId,
     });
-
-    const autoSsTotal = Math.min(grandSsTotal, rates.ssMax);
-    const ssTotal = ssOverride.enabled ? Number(ssOverride.value) || 0 : autoSsTotal;
-    const taxableAmount = grandPartsTotal - grandWarrantyPartsTotal + ssTotal;
-    const taxTotal = isTaxable ? taxableAmount * (rates.taxRate * 0.01) : 0;
-
-    const discountValue = Number(discount.value) || 0;
-    let discountAmount = 0;
-    if (discountValue > 0) {
-      const base =
-        discount.appliesTo === "parts" ? grandPartsTotal
-        : discount.appliesTo === "labor" ? grandLaborCost
-        : grandLaborCost + grandPartsTotal;
-      discountAmount =
-        discount.type === "percentage" ? base * (discountValue / 100) : Math.min(discountValue, base);
-    }
-
-    const grandTotal =
-      grandLaborCost + grandPartsTotal + ssTotal + taxTotal - discountAmount - grandWarrantyTotal;
-
-    return {
-      jobSummaries,
-      laborCost: grandLaborCost,
-      laborHours: grandLaborHours,
-      partsTotal: grandPartsTotal,
-      ssTotal,
-      autoSsTotal,
-      taxTotal,
-      discountAmount,
-      discount,
-      warrantyTotal: grandWarrantyTotal,
-      grandTotal,
-    };
-  }, [jobs, rates, discount, ssOverride, warrantyPolicies, isTaxable]);
 
   // ── Job handlers ─────────────────────────────────────────────────────────
 
@@ -268,6 +206,7 @@ export function useQuote({
       warrantyDateBilled: j.warrantyDateBilled,
       warrantyMileage: j.warrantyMileage,
     })),
+    sublets,
     grandTotal: totals.grandTotal,
   });
 
@@ -283,6 +222,7 @@ export function useQuote({
     setJobs([EMPTY_JOB(1)]);
     setDiscount(EMPTY_DISCOUNT);
     setSsOverride({ enabled: false, value: "" });
+    setSublets([]);
     onRatesChange(await loadGlobalRates());
     onNavigateToCompose();
   };
@@ -338,6 +278,7 @@ export function useQuote({
     if (saved.rates) onRatesChange(saved.rates as GlobalRates);
     setDiscount((saved.discount as DiscountState) || EMPTY_DISCOUNT);
     setSsOverride((saved.ssOverride as SsOverride) || { enabled: false, value: "" });
+    setSublets((saved.sublets as WorkingSublet[]) || []);
     if (saved.jobs && (saved.jobs as unknown[]).length > 0) {
       const loaded = (saved.jobs as Array<Record<string, unknown>>).map((jobData, i) => ({
         id: i + 1,
@@ -446,6 +387,7 @@ export function useQuote({
     quoteNumber, setQuoteNumber,
     discount, setDiscount,
     ssOverride, setSsOverride,
+    sublets, setSublets,
     fillModal, setFillModal,
     // Computed
     totals,
@@ -461,5 +403,9 @@ export function useQuote({
     handleSaveAsTemplate,
     applyTemplateWithParts,
     handleApplyTemplate,
+    handleAddSublet,
+    handleUpdateSublet,
+    handleRemoveSublet,
+    handleCreatePoForSublet,
   };
 }

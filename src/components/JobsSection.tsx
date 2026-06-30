@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { getJobTemplates } from '../storage';
 import JobCard from './JobCard';
-import type { JobTemplate, WorkingJob } from '../types/index';
+import SubletCard from './SubletCard';
+import type { JobTemplate, WorkingJob, WorkingSublet, Vendor, MarkupBracket } from '../types/index';
 
 type JobSummary = { id: number; subtotal: number };
 type Totals = { jobSummaries: JobSummary[] };
@@ -99,7 +100,11 @@ function TemplateSearch({ onApply }: {
   );
 }
 
-function JobsSection({ jobs, totals, onAddJob, onUpdateJob, onRemoveJob, onSaveAsTemplate, onApplyTemplate }: {
+function JobsSection({
+  jobs, totals, onAddJob, onUpdateJob, onRemoveJob, onSaveAsTemplate, onApplyTemplate,
+  sublets, vendors, subletMarkupMatrix,
+  onAddSublet, onUpdateSublet, onRemoveSublet, onCreatePoForSublet,
+}: {
   jobs: Job[];
   totals: Totals;
   onAddJob: () => void;
@@ -107,17 +112,32 @@ function JobsSection({ jobs, totals, onAddJob, onUpdateJob, onRemoveJob, onSaveA
   onRemoveJob: (id: number) => void;
   onSaveAsTemplate: (job: Job) => void;
   onApplyTemplate: (t: JobTemplate) => void;
+  // Sublets (optional — present on quote + order screens)
+  sublets?: WorkingSublet[];
+  vendors?: Vendor[];
+  subletMarkupMatrix?: MarkupBracket[];
+  onAddSublet?: () => void;
+  onUpdateSublet?: (id: string, field: keyof WorkingSublet, value: string | boolean) => void;
+  onRemoveSublet?: (id: string) => void;
+  onCreatePoForSublet?: (sublet: WorkingSublet) => void;
 }) {
   const getSubtotal = (jobId: number) => {
     const summary = totals.jobSummaries.find((s) => s.id === jobId);
     return summary ? summary.subtotal : 0;
   };
 
+  const subletsEnabled = !!onAddSublet;
+
   return (
     <div className="jobs-section">
       <div className="jobs-header">
         <h3 className="section-heading">Jobs</h3>
-        <button type="button" className="btn-small btn-secondary" onClick={onAddJob}>+ Blank Job</button>
+        <div className="jobs-header-actions">
+          <button type="button" className="btn-small btn-secondary" onClick={onAddJob}>+ Blank Job</button>
+          {subletsEnabled && (
+            <button type="button" className="btn-small btn-secondary" onClick={onAddSublet}>+ Add Sublet</button>
+          )}
+        </div>
       </div>
       <TemplateSearch onApply={onApplyTemplate} />
       <div id="jobs-container">
@@ -132,6 +152,18 @@ function JobsSection({ jobs, totals, onAddJob, onUpdateJob, onRemoveJob, onSaveA
             isBlank={job.parts.length === 0 && !job.laborCost && !job.laborHrs && !job.description}
           />
         ))}
+        {subletsEnabled &&
+          (sublets ?? []).map((s) => (
+            <SubletCard
+              key={s.id}
+              sublet={s}
+              vendors={vendors ?? []}
+              markupMatrix={subletMarkupMatrix}
+              onUpdate={onUpdateSublet!}
+              onRemove={onRemoveSublet!}
+              onCreatePo={onCreatePoForSublet!}
+            />
+          ))}
       </div>
     </div>
   );

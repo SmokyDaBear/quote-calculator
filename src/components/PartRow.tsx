@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { requestPurchaseOrder } from "../utils/poRequest";
 import type { LibraryPart } from "../types/index";
 
 type PartData = { partNumber: string; name: string; price: string; quantity: number; msrp?: string; cost?: string; isEstimate?: boolean; partId?: string };
@@ -76,6 +77,17 @@ function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtLis
     );
   const showSaveHint =
     trimmedName !== "" && !part.isEstimate && !isInLibrary && !!onSaveToInventory;
+  const showCreatePo = trimmedName !== "" && !part.isEstimate;
+
+  const handleCreatePo = () =>
+    requestPurchaseOrder({
+      lineType: part.partId ? "inventory" : "special_order",
+      inventoryId: part.partId,
+      name: part.name,
+      partNumber: part.partNumber,
+      unitCost: Number(part.cost) || 0,
+      sellPrice: Number(part.price) || undefined,
+    });
 
   return (
     <div className="part-row-wrapper" ref={wrapperRef}>
@@ -139,15 +151,26 @@ function PartRow({ part, idx, library, onUpdate, onReplace, onRemove, priceAtLis
           ))}
         </div>
       )}
-      {showSaveHint && (
+      {(showSaveHint || showCreatePo) && (
         <div className="part-row-save-hint">
-          <button
-            type="button"
-            className="part-save-inv-btn"
-            onMouseDown={(e) => { e.preventDefault(); onSaveToInventory!(); }}
-          >
-            + Save to Inventory
-          </button>
+          {showSaveHint && (
+            <button
+              type="button"
+              className="part-save-inv-btn"
+              onMouseDown={(e) => { e.preventDefault(); onSaveToInventory!(); }}
+            >
+              + Save to Inventory
+            </button>
+          )}
+          {showCreatePo && (
+            <button
+              type="button"
+              className="part-save-inv-btn"
+              onMouseDown={(e) => { e.preventDefault(); handleCreatePo(); }}
+            >
+              + Create Purchase Order
+            </button>
+          )}
         </div>
       )}
     </div>

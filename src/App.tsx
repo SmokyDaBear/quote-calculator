@@ -20,6 +20,16 @@ import VehicleSection from "./components/VehicleSection";
 import ServiceRecommendations from "./components/ServiceRecommendations";
 import QuickJobs from "./components/QuickJobs";
 import TemplateFillModal from "./components/TemplateFillModal";
+import OrdersPage from "./components/OrdersPage";
+import OrderEditor from "./components/OrderEditor";
+import AppointmentsPage from "./components/AppointmentsPage";
+import AppointmentModal from "./components/AppointmentModal";
+import PurchaseOrdersPage from "./components/PurchaseOrdersPage";
+import PurchaseOrderEditor from "./components/PurchaseOrderEditor";
+import ExpensesPage from "./components/ExpensesPage";
+import { EMPTY_CUSTOMER_FORM_DATA } from "./components/CustomerFormFields";
+import { onPurchaseOrderRequest } from "./utils/poRequest";
+import type { PoPrefill } from "./utils/poRequest";
 import { useToast, ToastContainer } from "./components/Toast";
 import {
   IconQuote,
@@ -50,6 +60,12 @@ import {
   getCurrentQuoteNumber,
   loadCustomTheme,
   saveCustomTheme,
+  saveCustomer,
+  updateCustomer,
+  getCustomer,
+  getCustomerVehicles,
+  getQuote,
+  getVendors,
 } from "./storage";
 import type { CustomTheme } from "./utils/customTheme";
 import type {
@@ -57,8 +73,11 @@ import type {
   BusinessInfo,
   QuoteIndexEntry,
   WorkingPart,
+  WorkingJob,
   Customer,
   WarrantyPolicy,
+  Appointment,
+  Vendor,
 } from "./types/index";
 import { ToggleField } from "./components/forms/ToggleField";
 import { ACCENT_PRESETS } from "./utils/accentPresets";
@@ -67,7 +86,8 @@ import WelcomeModal, {
   WELCOME_KEY,
   WELCOME_VERSION,
 } from "./components/WelcomeModal";
-import { useQuote } from "./hooks/useQuote";
+import { useQuote, migrateJobParts, EMPTY_DISCOUNT } from "./hooks/useQuote";
+import type { OrderDraft } from "./hooks/useOrder";
 
 const THEME_KEY = "quote_calculator_theme";
 const ACCENT_KEY = "quote_calculator_accent";
@@ -82,6 +102,9 @@ const BIZ_DEFAULTS: BusinessInfo = {
 
 const NAV_TABS = [
   { id: "quote", label: "Quotes", icon: <IconQuote /> },
+  { id: "orders", label: "Orders", icon: <IconQuote /> },
+  { id: "appointments", label: "Appointments", icon: <IconCustomers /> },
+  { id: "purchasing", label: "Purchasing", icon: <IconVendors /> },
   { id: "templates", label: "Job Templates", icon: <IconTemplates /> },
   { id: "inventory", label: "Inventory", icon: <IconInventory /> },
   { id: "customers", label: "Customers", icon: <IconCustomers /> },
@@ -123,6 +146,23 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   const [quoteTab, setQuoteTab] = useState<"compose" | "history">("compose");
   const [historyPage, setHistoryPage] = useState(1);
 
+  // ── Orders / appointments ──────────────────────────────────────────────────
+  const [ordersReloadKey, setOrdersReloadKey] = useState(0);
+  const [orderEditorState, setOrderEditorState] = useState<{
+    orderId: string | null;
+    draft: OrderDraft | null;
+  } | null>(null);
+  const [apptModal, setApptModal] = useState<{ draft: OrderDraft | null } | null>(null);
+  const bumpOrders = () => setOrdersReloadKey((k) => k + 1);
+
+  // ── Purchasing ──────────────────────────────────────────────────────────────
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [poEditorState, setPoEditorState] = useState<{
+    poId: string | null;
+    prefill: PoPrefill | null;
+  } | null>(null);
+  const [showExpenses, setShowExpenses] = useState(false);
+
   const { toasts, toast, dismiss } = useToast();
 
   // ── Quote hook ─────────────────────────────────────────────────────────────
@@ -147,6 +187,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     setDiscount,
     ssOverride,
     setSsOverride,
+    sublets,
     fillModal,
     setFillModal,
     totals,
@@ -161,6 +202,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     handleSaveAsTemplate,
     applyTemplateWithParts,
     handleApplyTemplate,
+    handleAddSublet,
+    handleUpdateSublet,
+    handleRemoveSublet,
+    handleCreatePoForSublet,
   } = useQuote({
     rates,
     warrantyPolicies,
@@ -195,6 +240,22 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
       }
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the vendor list fresh for sublets / purchase orders.
+  useEffect(() => {
+    getVendors().then(setVendors);
+  }, [ordersReloadKey]);
+
+  // Let any "Create Purchase Order" button (parts, sublets) open the PO editor.
+  useEffect(() => {
+    onPurchaseOrderRequest((prefill) => {
+      setShowExpenses(false);
+      setOrderEditorState(null);
+      setPoEditorState({ poId: null, prefill });
+      setActiveView("purchasing");
+    });
+    return () => onPurchaseOrderRequest(null);
+  }, []);
 
   // The hook initializes quoteNumber to 1001; sync it with the real current number on mount.
   // We do this separately so the hook can already be in scope when useEffect runs.
@@ -282,6 +343,128 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   const toggleMobilePanel = (panel: string) =>
     setMobilePanel((prev) => (prev === panel ? null : panel));
 
+  // ── Quote → order / appointment ─────────────────────────────────────────────
+  const buildQuoteDraft = (): OrderDraft => ({
+    customerData,
+    customerId,
+    selectedCustomer,
+    vehicle,
+    vehicleId: null,
+    jobs,
+    discount,
+    ssOverride,
+    isTaxable,
+    notes,
+    quoteId: currentQuoteId ?? undefined,
+  });
+
+  const handleConvertToOrder = () => {
+    if (!customerData.name.trim()) {
+      toast("Add customer info before creating an order.", "error");
+      return;
+    }
+    setOrderEditorState({ orderId: null, draft: buildQuoteDraft() });
+    setActiveView("orders");
+  };
+
+  const handleCreateAppointment = () => {
+    setApptModal({ draft: buildQuoteDraft() });
+  };
+
+  const handleSaveQuoteCustomer = async () => {
+    if (!customerData.name.trim()) return;
+    const payload = {
+      name: customerData.name,
+      phones: customerData.phones,
+      email: customerData.email,
+      address: customerData.address,
+      notes: customerData.notes,
+      taxable: customerData.taxable,
+      taxId: customerData.taxId,
+    };
+    if (customerId) {
+      await updateCustomer(customerId, payload);
+      toast("Customer updated.");
+    } else {
+      const c = await saveCustomer(payload);
+      setCustomerId(c.id);
+      setSelectedCustomer(c);
+      toast("Customer saved.");
+    }
+  };
+
+  const jobsFromQuoteDoc = (q: Record<string, unknown>): WorkingJob[] => {
+    const arr = (q.jobs as Array<Record<string, unknown>>) ?? [];
+    return arr.map((jobData, i) => ({
+      id: i + 1,
+      name: (jobData.name as string) || `Job ${i + 1}`,
+      parts: migrateJobParts(jobData.parts),
+      laborHrs: (jobData.laborHrs as number | string)?.toString() || "",
+      laborCost: (jobData.laborCost as number | string)?.toString() || "",
+      description: (jobData.description as string) || "",
+      priceAtList: (jobData.priceAtList as boolean) || false,
+      warrantyPolicyId: jobData.warrantyPolicyId as string | undefined,
+      warrantyPolicyName: jobData.warrantyPolicyName as string | undefined,
+      warrantyDateBilled: jobData.warrantyDateBilled as string | undefined,
+      warrantyMileage: jobData.warrantyMileage as string | undefined,
+    }));
+  };
+
+  const handleConvertAppointmentToOrder = async (appt: Appointment) => {
+    const [cust, vehs] = await Promise.all([
+      getCustomer(appt.customerId),
+      getCustomerVehicles(appt.customerId),
+    ]);
+    const veh = vehs.find((v) => v.id === appt.vehicleId);
+
+    let draftJobs: WorkingJob[] = [];
+    let dDiscount = EMPTY_DISCOUNT;
+    let dSs = { enabled: false, value: "" };
+    let dTaxable = true;
+    let dNotes = "";
+    if (appt.quoteId) {
+      const q = await getQuote(appt.quoteId);
+      if (q) {
+        draftJobs = jobsFromQuoteDoc(q);
+        dDiscount = (q.discount as typeof EMPTY_DISCOUNT) || EMPTY_DISCOUNT;
+        dSs = (q.ssOverride as typeof dSs) || dSs;
+        dTaxable = (q.isTaxable as boolean) !== false;
+        dNotes = (q.notes as string) || "";
+      }
+    }
+
+    const draft: OrderDraft = {
+      customerData: cust
+        ? {
+            name: cust.name,
+            phones: cust.phones.length ? cust.phones : [{ label: "Mobile", number: "" }],
+            email: cust.email,
+            address: cust.address,
+            notes: cust.notes,
+            taxable: cust.taxable !== false,
+            taxId: cust.taxId ?? "",
+          }
+        : EMPTY_CUSTOMER_FORM_DATA,
+      customerId: appt.customerId,
+      selectedCustomer: cust,
+      vehicle: veh
+        ? {
+            year: veh.year, make: veh.make, model: veh.model,
+            trim: veh.trim, vin: veh.vin, mileage: veh.mileage,
+          }
+        : { year: "", make: "", model: "", trim: "", vin: "", mileage: "" },
+      vehicleId: appt.vehicleId,
+      jobs: draftJobs,
+      discount: dDiscount,
+      ssOverride: dSs,
+      isTaxable: dTaxable,
+      notes: dNotes,
+      quoteId: appt.quoteId,
+    };
+    setOrderEditorState({ orderId: null, draft });
+    setActiveView("orders");
+  };
+
   if (!dbReady) {
     return <div className="app-loading">Loading…</div>;
   }
@@ -322,6 +505,9 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                 className={`main-nav-tab${activeView === tab.id ? " active" : ""}`}
                 onClick={() => {
                   setActiveView(tab.id);
+                  setOrderEditorState(null);
+                  setPoEditorState(null);
+                  setShowExpenses(false);
                   setNavOpen(false);
                 }}
               >
@@ -397,6 +583,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                           setSelectedCustomer(c);
                         }}
                         selectedCustomer={selectedCustomer}
+                        onSaveCustomer={handleSaveQuoteCustomer}
                       />
                       <VehicleSection
                         vehicle={vehicle}
@@ -421,6 +608,13 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                       onRemoveJob={handleRemoveJob}
                       onSaveAsTemplate={handleSaveAsTemplate}
                       onApplyTemplate={handleApplyTemplate}
+                      sublets={sublets}
+                      vendors={vendors}
+                      subletMarkupMatrix={rates.subletMarkupMatrix}
+                      onAddSublet={handleAddSublet}
+                      onUpdateSublet={handleUpdateSublet}
+                      onRemoveSublet={handleRemoveSublet}
+                      onCreatePoForSublet={handleCreatePoForSublet}
                     />
                     <div className="quote-modifiers">
                       <DiscountSection
@@ -472,6 +666,20 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                       >
                         <PrintIcon /> Print Quote
                       </button>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={handleConvertToOrder}
+                      >
+                        Create Work Order
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleCreateAppointment}
+                      >
+                        Create Appointment
+                      </button>
                       {currentQuoteId && (
                         <button
                           type="button"
@@ -500,6 +708,59 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
               }
             </div>
           )}
+          {activeView === "orders" &&
+            (orderEditorState ? (
+              <OrderEditor
+                orderId={orderEditorState.orderId}
+                initialDraft={orderEditorState.draft}
+                rates={rates}
+                warrantyPolicies={warrantyPolicies}
+                businessInfo={businessInfo}
+                vendors={vendors}
+                toast={toast}
+                onBack={() => {
+                  setOrderEditorState(null);
+                  bumpOrders();
+                }}
+                onChanged={bumpOrders}
+              />
+            ) : (
+              <OrdersPage
+                reloadKey={ordersReloadKey}
+                onNewOrder={() => setOrderEditorState({ orderId: null, draft: null })}
+                onOpenOrder={(id) => setOrderEditorState({ orderId: id, draft: null })}
+              />
+            ))}
+          {activeView === "appointments" && (
+            <AppointmentsPage
+              reloadKey={ordersReloadKey}
+              onNewAppointment={() => setApptModal({ draft: null })}
+              onConvertToOrder={handleConvertAppointmentToOrder}
+              onChanged={bumpOrders}
+            />
+          )}
+          {activeView === "purchasing" &&
+            (poEditorState ? (
+              <PurchaseOrderEditor
+                poId={poEditorState.poId}
+                prefill={poEditorState.prefill}
+                onBack={() => {
+                  setPoEditorState(null);
+                  bumpOrders();
+                }}
+                onChanged={bumpOrders}
+                toast={toast}
+              />
+            ) : showExpenses ? (
+              <ExpensesPage reloadKey={ordersReloadKey} onBack={() => setShowExpenses(false)} />
+            ) : (
+              <PurchaseOrdersPage
+                reloadKey={ordersReloadKey}
+                onNewPo={() => setPoEditorState({ poId: null, prefill: null })}
+                onOpenPo={(id) => setPoEditorState({ poId: id, prefill: null })}
+                onViewExpenses={() => setShowExpenses(true)}
+              />
+            ))}
           {activeView === "templates" && (
             <TemplatesPage
               onApplyTemplate={handleApplyTemplate}
@@ -563,6 +824,18 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
             setFillModal(null);
           }}
           onCancel={() => setFillModal(null)}
+        />
+      )}
+      {apptModal && (
+        <AppointmentModal
+          draft={apptModal.draft}
+          onClose={() => setApptModal(null)}
+          onSaved={() => {
+            setApptModal(null);
+            bumpOrders();
+            setActiveView("appointments");
+          }}
+          toast={toast}
         />
       )}
       <ToastContainer

@@ -166,10 +166,15 @@ function vehicleHTML(v: PrintVehicle): string {
   </div>`;
 }
 
-function printFooterHTML(businessInfo: Partial<BusinessInfo>): string {
+function printFooterHTML(businessInfo: Partial<BusinessInfo>, disclaimer: string | undefined, totalsHtml: string): string {
   const message = businessInfo.printMessage?.trim();
+  const disc = disclaimer?.trim();
   return `<div class="print-footer">
     ${message ? `<div class="print-message">${message}</div>` : ""}
+    <div class="summary-row">
+      <div class="summary-disclaimer">${disc ?? ""}</div>
+      ${totalsHtml}
+    </div>
     <div class="sig-block">
       <div class="sig-line">
         <div class="sig-line-rule"></div>
@@ -189,6 +194,8 @@ function printFooterHTML(businessInfo: Partial<BusinessInfo>): string {
 
 export function printQuote({
   quoteNumber,
+  docLabel = "Quote",
+  disclaimer,
   customerName,
   phone,
   notes,
@@ -201,6 +208,8 @@ export function printQuote({
   customer = null,
 }: {
   quoteNumber: number;
+  docLabel?: string;
+  disclaimer?: string;
   customerName: string;
   phone: string;
   notes: string;
@@ -224,12 +233,17 @@ export function printQuote({
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>Quote #${quoteNumber}</title>
+<title>${docLabel} #${quoteNumber}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-html{height:100%}
-body{font-family:Arial,sans-serif;font-size:11pt;color:#222;padding:36px;min-height:100%;display:flex;flex-direction:column}
-.print-content{flex:1}
+html,body{height:100%}
+body{font-family:Arial,sans-serif;font-size:11pt;color:#222;padding:36px}
+.print-doc{width:100%;height:100%;border-collapse:collapse}
+.print-doc>thead>tr>td,.print-doc>tbody>tr>td{padding:0}
+.doc-header{display:table-header-group;break-inside:avoid;page-break-inside:avoid}
+.running-header{padding-bottom:12px;border-bottom:1px solid #ddd;margin-bottom:14px}
+.body-fill{height:100%}
+.body-fill>td{vertical-align:top}
 
 .top-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;gap:24px}
 .top-biz{display:flex;align-items:flex-start;gap:14px}
@@ -270,7 +284,7 @@ hr{border:none;border-top:1px solid #ddd;margin:14px 0}
 .job-meta{display:flex;flex-wrap:wrap;gap:16px;font-size:9.5pt;color:#555;margin-top:4px}
 .job-sub{font-weight:bold;color:#222;margin-left:auto}
 
-.totals{width:260px;margin-left:auto;border-collapse:collapse;font-size:10pt;margin-top:8px}
+.totals{width:260px;flex:0 0 260px;margin-left:auto;border-collapse:collapse;font-size:10pt}
 .totals td{padding:4px 8px;border-bottom:1px solid #eee}
 .totals td:last-child{text-align:right;font-weight:bold}
 .tl{color:#555;font-weight:normal}
@@ -284,8 +298,11 @@ hr{border:none;border-top:1px solid #ddd;margin:14px 0}
 .warranty-lbl{color:${ACCENT};font-weight:normal}.warranty-val{color:${ACCENT}}
 .grand td{border-top:2px solid #222;border-bottom:2px solid #222;background:#fff;color:#222;font-size:11pt;font-weight:bold;padding:6px 8px}
 
-.print-footer{margin-top:auto;padding-top:18px;border-top:1px solid #ddd}
-.print-message{font-size:10.5pt;color:#333;text-align:center;font-style:italic;margin-bottom:28px}
+.summary-block{break-inside:avoid;page-break-inside:avoid}
+.print-footer{padding-top:14px}
+.print-message{font-size:10.5pt;color:#333;text-align:center;font-style:italic;margin-bottom:14px}
+.summary-row{display:flex;gap:32px;align-items:flex-start;margin-bottom:24px}
+.summary-disclaimer{flex:1;font-size:8.5pt;color:#555;line-height:1.5;white-space:pre-line}
 .sig-block{display:flex;gap:48px;margin-top:8px}
 .sig-line{flex:1}
 .sig-line-rule{border-top:1px solid #555;margin-bottom:5px}
@@ -295,20 +312,30 @@ hr{border:none;border-top:1px solid #ddd;margin:14px 0}
 </style>
 </head>
 <body>
-<div class="print-content">
+<table class="print-doc">
+<thead class="doc-header"><tr><td>
+<div class="running-header">
 ${topHeaderHTML(businessInfo, customer, customerName, phone)}
 <div class="head">
-  <div class="qnum">Quote #${quoteNumber}</div>
+  <div class="qnum">${docLabel} #${quoteNumber}</div>
   <div class="qdate">${date}</div>
 </div>
 ${vehicleHTML(vehicle)}
-${notes && notes.trim() ? `<div class="notes-box"><div class="notes-label">Notes</div>${notes.trim()}</div>` : ""}
-<hr/>
-${jobsHTML(jobs, totalsWithDiscount)}
-<hr/>
-${totalsHTML(totalsWithDiscount, rates)}
 </div>
-${printFooterHTML(businessInfo)}
+</td></tr></thead>
+<tbody>
+<tr class="body-fill"><td>
+${notes && notes.trim() ? `<div class="notes-box"><div class="notes-label">Notes</div>${notes.trim()}</div>` : ""}
+${jobsHTML(jobs, totalsWithDiscount)}
+</td></tr>
+<tr><td>
+<div class="summary-block">
+<hr/>
+${printFooterHTML(businessInfo, disclaimer, totalsHTML(totalsWithDiscount, rates))}
+</div>
+</td></tr>
+</tbody>
+</table>
 </body>
 </html>`;
 

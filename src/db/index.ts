@@ -1,5 +1,5 @@
 const DB_NAME = 'quote-calculator';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 type StoreName =
   | 'parts'
@@ -10,7 +10,40 @@ type StoreName =
   | 'vehicles'
   | 'tasks'
   | 'settings'
-  | 'vendors';
+  | 'vendors'
+  | 'appointments'
+  | 'orders'
+  | 'orderJobs'
+  | 'orderJobParts'
+  | 'orderSublets'
+  | 'invoices'
+  | 'payments'
+  | 'purchaseOrders'
+  | 'purchaseOrderLines';
+
+/** Secondary indexes to create per store: [storeName, indexName, keyPath]. */
+const SECONDARY_INDEXES: Array<[StoreName, string, string]> = [
+  ['vehicles', 'customerId', 'customerId'],
+  ['vehicles', 'vin', 'vin'],
+  ['appointments', 'customerId', 'customerId'],
+  ['appointments', 'vehicleId', 'vehicleId'],
+  ['appointments', 'quoteId', 'quoteId'],
+  ['orders', 'customerId', 'customerId'],
+  ['orders', 'vehicleId', 'vehicleId'],
+  ['orderJobs', 'orderId', 'orderId'],
+  ['orderJobParts', 'orderId', 'orderId'],
+  ['orderJobParts', 'jobId', 'jobId'],
+  ['orderJobParts', 'inventoryId', 'inventoryId'],
+  ['orderSublets', 'orderId', 'orderId'],
+  ['invoices', 'customerId', 'customerId'],
+  ['invoices', 'orderId', 'orderId'],
+  ['payments', 'customerId', 'customerId'],
+  ['payments', 'invoiceId', 'invoiceId'],
+  ['purchaseOrders', 'vendorId', 'vendorId'],
+  ['purchaseOrders', 'status', 'status'],
+  ['purchaseOrderLines', 'poId', 'poId'],
+  ['purchaseOrderLines', 'inventoryId', 'inventoryId'],
+];
 
 let _db: IDBDatabase | null = null;
 
@@ -21,9 +54,15 @@ function openDB(): Promise<IDBDatabase> {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
     req.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result;
+      const target = e.target as IDBOpenDBRequest;
+      const db = target.result;
+      const upgradeTx = target.transaction!;
 
-      const idxStores: StoreName[] = ['parts', 'templates', 'quotes', 'customers', 'vehicles', 'vendors'];
+      const idxStores: StoreName[] = [
+        'parts', 'templates', 'quotes', 'customers', 'vehicles', 'vendors',
+        'appointments', 'orders', 'orderJobs', 'orderJobParts', 'orderSublets',
+        'invoices', 'payments', 'purchaseOrders', 'purchaseOrderLines',
+      ];
       for (const name of idxStores) {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name, { keyPath: 'id' });
@@ -41,6 +80,14 @@ function openDB(): Promise<IDBDatabase> {
 
       if (!db.objectStoreNames.contains('settings')) {
         db.createObjectStore('settings');
+      }
+
+      // Secondary indexes — created on both new and pre-existing stores.
+      for (const [store, index, keyPath] of SECONDARY_INDEXES) {
+        const os = upgradeTx.objectStore(store);
+        if (!os.indexNames.contains(index)) {
+          os.createIndex(index, keyPath);
+        }
       }
     };
 
@@ -70,6 +117,20 @@ export async function dbGetAll<T>(store: StoreName): Promise<T[]> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(store, 'readonly');
     const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result as T[]);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function dbGetAllByIndex<T>(
+  store: StoreName,
+  index: string,
+  key: IDBValidKey,
+): Promise<T[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).index(index).getAll(key);
     req.onsuccess = () => resolve(req.result as T[]);
     req.onerror = () => reject(req.error);
   });

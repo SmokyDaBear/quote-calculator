@@ -86,11 +86,14 @@ function QuoteInfo({
   onCustomerDataChange,
   onCustomerSelect,
   selectedCustomer,
+  onSaveCustomer,
 }: {
   customerData: CustomerFormData;
   onCustomerDataChange: (d: CustomerFormData) => void;
   onCustomerSelect: (c: Customer | null) => void;
   selectedCustomer?: Customer | null;
+  /** When provided, shows a Save/Update Customer button in the form view. */
+  onSaveCustomer?: () => void | Promise<void>;
 }) {
   const hasCustomer = !!customerData.name.trim();
   const [isEditing, setIsEditing] = useState(!hasCustomer);
@@ -138,13 +141,24 @@ function QuoteInfo({
             onChange={onCustomerDataChange}
           />
           {hasCustomer && (
-            <button
-              type="button"
-              className="btn-small btn-secondary info-done-btn"
-              onClick={() => setIsEditing(false)}
-            >
-              Done
-            </button>
+            <div className="info-form-actions">
+              {onSaveCustomer && (
+                <button
+                  type="button"
+                  className="btn-small btn-success"
+                  onClick={() => onSaveCustomer()}
+                >
+                  {selectedCustomer ? "Update Customer" : "Save Customer"}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-small btn-secondary info-done-btn"
+                onClick={() => setIsEditing(false)}
+              >
+                Done
+              </button>
+            </div>
           )}
         </>
       ) : (
