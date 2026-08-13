@@ -4,3 +4,5 @@ node_modules
 build
 local/*
 local
+changelog
+changelog/*
