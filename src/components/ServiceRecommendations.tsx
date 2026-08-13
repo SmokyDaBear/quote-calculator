@@ -12,8 +12,11 @@ function ServiceRecommendations({
 }: {
   mileage: string;
   jobs: Array<{ name: string }>;
-  onApplyTemplate: (template: JobTemplate) => void;
+  onApplyTemplate: (template: JobTemplate) => void | Promise<void>;
 }) {
+  const hasSlots = (t: JobTemplate) =>
+    (t.parts || []).some((p) => p.type === "category");
+
   const [templates, setTemplates] = useState<TemplateWithMileage[]>([]);
 
   useEffect(() => {
@@ -37,6 +40,17 @@ function ServiceRecommendations({
     [jobs],
   );
 
+  const pending = useMemo(
+    () => recommendations.filter((r) => !addedNames.has(r.name.trim().toLowerCase())),
+    [recommendations, addedNames],
+  );
+
+  const handleAddAll = async () => {
+    // Awaited one at a time: templates with category slots open a picker, and
+    // firing them all at once would leave every prompt but the last unanswered.
+    for (const rec of pending) await onApplyTemplate(rec);
+  };
+
   if (recommendations.length === 0) return null;
 
   return (
@@ -46,8 +60,35 @@ function ServiceRecommendations({
         <span className="service-rec-subtitle">
           Based on {Number(mileage).toLocaleString()} mi
         </span>
+        <button
+          type="button"
+          className="btn-small btn-secondary service-rec-refresh-btn"
+          onClick={() => {
+            getJobTemplates().then((all) =>
+              setTemplates(all as TemplateWithMileage[]),
+            );
+          }}
+        >
+          Refresh
+        </button>
+        <button
+          type="button"
+          className="btn-small btn-secondary service-rec-add-all-btn"
+          onClick={handleAddAll}
+          disabled={pending.length === 0}
+          title={
+            pending.some(hasSlots)
+              ? "Templates with flexible parts will ask you to pick each one"
+              : undefined
+          }
+        >
+          Add All{pending.length > 0 ? ` (${pending.length})` : ""}
+        </button>
       </div>
-      <HorizontalScrollContainer hideScrollbar={true} trackClassName="service-rec-scroll">
+      <HorizontalScrollContainer
+        hideScrollbar={false}
+        trackClassName="service-rec-scroll"
+      >
         {recommendations.map((rec) => {
           const added = addedNames.has(rec.name.trim().toLowerCase());
           return (

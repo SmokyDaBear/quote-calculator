@@ -1,0 +1,178 @@
+/* Horizontal scroll — 7 day columns can exceed a narrow viewport. */
+.scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(var(--wc-cols), minmax(var(--wc-col-w, 168px), 1fr));
+  min-width: min-content;
+}
+
+.dayCol {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border);
+}
+.dayCol:last-child {
+  border-right: none;
+}
+.dayColToday {
+  background: var(--color-surface-alt);
+}
+
+/* ── Sticky day header ─────────────────────────────────────────────────── */
+.dayHead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  background: var(--color-surface-alt);
+  border-bottom: 1px solid var(--color-border);
+}
+.dayHeadToday {
+  background: var(--color-accent-ring);
+  box-shadow: inset 0 -2px 0 var(--color-accent);
+}
+.dayName {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+.dayHeadToday .dayName {
+  color: var(--color-accent);
+}
+.dayDate {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+.dayCount {
+  margin-left: auto;
+  min-width: 1.4rem;
+  padding: 0 var(--space-xs);
+  text-align: center;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-full);
+}
+
+/* ── Day body — stacked event chips ────────────────────────────────────── */
+.dayBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-xs);
+  min-height: 96px;
+  flex: 1;
+}
+.dayEmpty {
+  padding: var(--space-sm) 0;
+  text-align: center;
+  color: var(--color-text-disabled);
+  font-size: var(--font-size-sm);
+}
+
+/* ── Condensed event chip ──────────────────────────────────────────────── */
+.chip {
+  --wc-stripe: var(--color-border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-sm);
+  padding-left: calc(var(--space-sm) - 1px);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--wc-stripe);
+  border-radius: var(--radius-sm);
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+.chip[role='button'] {
+  cursor: pointer;
+}
+.chip[role='button']:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--color-border-strong);
+}
+.chip[role='button']:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.chip[data-tone='info'] { --wc-stripe: var(--color-info); }
+.chip[data-tone='success'] { --wc-stripe: var(--color-success); }
+.chip[data-tone='warning'] { --wc-stripe: var(--color-warning); }
+.chip[data-tone='danger'] { --wc-stripe: var(--color-danger); }
+.chip[data-tone='neutral'] { --wc-stripe: var(--color-border-strong); }
+
+.chipHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+.chipTime {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.chipName {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.25;
+}
+.chipMeta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Actions ───────────────────────────────────────────────────────────── */
+.chipActions {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: 2px;
+}
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 var(--space-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+.actionBtn:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--color-accent-ring);
+}
+.actionBtn svg {
+  width: 13px;
+  height: 13px;
+}
+.actionDanger:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background: transparent;
+}

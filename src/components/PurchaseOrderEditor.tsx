@@ -15,6 +15,7 @@ import {
   saveOrderSublet,
   updateOrderSublet,
 } from "../storage";
+import VendorPicker from "./VendorPicker";
 import { CATEGORY_NAMES } from "../utils/partCategories";
 import { EXPENSE_CATEGORIES } from "../types/index";
 import type { PoPrefill } from "../utils/poRequest";
@@ -110,6 +111,13 @@ function PurchaseOrderEditor({
   const [receiving, setReceiving] = useState(false);
   const [partSearch, setPartSearch] = useState<Record<string, string>>({});
 
+  // onChanged bumps the app-wide reload key, which also refreshes the vendor
+  // list backing sublets elsewhere.
+  const refreshVendors = async () => {
+    setVendors(await getVendors());
+    onChanged();
+  };
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -158,7 +166,7 @@ function PurchaseOrderEditor({
         }
       } else {
         if (prefill?.vendorId) setVendorId(prefill.vendorId);
-        if (prefill) setLines([blankLine(prefill.lineType, prefill)]);
+        if (prefill?.lineType) setLines([blankLine(prefill.lineType, prefill)]);
       }
       setLoading(false);
     })();
@@ -333,20 +341,14 @@ function PurchaseOrderEditor({
       <div className="po-editor-grid">
         <div className="po-editor-main">
           <div className="order-details-row page-card">
-            <div className="lib-form-group">
-              <label>Vendor *</label>
-              <select
-                aria-label="Vendor"
-                value={vendorId}
-                disabled={readOnly || !!po}
-                onChange={(e) => setVendorId(e.target.value)}
-              >
-                <option value="">Select vendor…</option>
-                {vendors.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
-                ))}
-              </select>
-            </div>
+            <VendorPicker
+              vendors={vendors}
+              vendorId={vendorId}
+              onChange={setVendorId}
+              onVendorsChanged={refreshVendors}
+              // The vendor is fixed once the PO exists, but its details stay editable.
+              disabled={readOnly || !!po}
+            />
             <div className="lib-form-group" style={{ flex: "2 1 240px" }}>
               <label>Notes</label>
               <input

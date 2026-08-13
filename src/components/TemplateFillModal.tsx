@@ -10,6 +10,7 @@ function TemplateFillModal({ template, onConfirm, onCancel }: {
   onCancel: () => void;
 }) {
   const [library, setLibrary] = useState<LibraryPart[]>([]);
+  const [libraryLoaded, setLibraryLoaded] = useState(false);
 
   const slots = (template.parts || [])
     .map((p, idx) => ({ ...p, idx }))
@@ -22,6 +23,7 @@ function TemplateFillModal({ template, onConfirm, onCancel }: {
   useEffect(() => {
     getPartsLibrary().then((lib) => {
       setLibrary(lib);
+      setLibraryLoaded(true);
       // Auto-select estimated for slots with no inventory match and an estimated price
       setSelections((prev) => {
         const next = { ...prev };
@@ -45,7 +47,20 @@ function TemplateFillModal({ template, onConfirm, onCancel }: {
   const handleConfirm = () => {
     const resolvedParts: WorkingPart[] = (template.parts || [])
       .map((p, idx): WorkingPart | null => {
-        if (p.type !== "category") return null;
+        // Specific parts aren't configurable, but they still belong on the job.
+        if (p.type === "specific") {
+          if (!p.partId) return null;
+          const found = library.find((l) => l.id === p.partId);
+          return {
+            partNumber: found?.partNumber || "",
+            name: found?.name || "(unknown part)",
+            price: found?.price?.toString() || "0",
+            quantity: Number(p.quantity) || 1,
+            cost: found?.cost?.toString(),
+            msrp: found?.msrp?.toString(),
+          };
+        }
+
         const selection = selections[idx];
 
         if (selection === ESTIMATED) {
@@ -174,7 +189,7 @@ function TemplateFillModal({ template, onConfirm, onCancel }: {
             type="button"
             className="btn-small btn-success"
             onClick={handleConfirm}
-            disabled={!allRequiredFilled}
+            disabled={!libraryLoaded || !allRequiredFilled}
           >
             Add to Quote
           </button>

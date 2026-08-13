@@ -2,7 +2,8 @@ import type { PoLineType } from "../types/index";
 
 /** Prefill describing the first line of a purchase order to open. */
 export interface PoPrefill {
-  lineType: PoLineType;
+  /** Omit to open an empty PO — used when starting from a vendor. */
+  lineType?: PoLineType;
   inventoryId?: string;
   name?: string;
   partNumber?: string;

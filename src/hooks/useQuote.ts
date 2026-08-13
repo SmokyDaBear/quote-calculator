@@ -14,6 +14,7 @@ import { requestPurchaseOrder } from "../utils/poRequest";
 import { EMPTY_CUSTOMER_FORM_DATA } from "../components/CustomerFormFields";
 import type { CustomerFormData } from "../components/CustomerFormFields";
 import type { SsOverride } from "../components/ShopSuppliesOverride";
+import type { VehicleFields } from "../components/VehicleSection";
 import type {
   GlobalRates,
   BusinessInfo,
@@ -40,8 +41,8 @@ export const EMPTY_DISCOUNT: DiscountState = {
   appliesTo: "both",
 };
 
-export const EMPTY_VEHICLE = {
-  year: "", make: "", model: "", trim: "", vin: "", mileage: "",
+export const EMPTY_VEHICLE: VehicleFields = {
+  year: "", make: "", model: "", trim: "", vin: "", mileage: "", notes: "",
 };
 
 export const EMPTY_JOB = (id: number): WorkingJob => ({
@@ -53,6 +54,12 @@ export const EMPTY_JOB = (id: number): WorkingJob => ({
   description: "",
   priceAtList: false,
 });
+
+/** Next free job id for a list. Must be derived inside a state updater — several
+ *  jobs can be queued in one tick (e.g. "Add All"), and a render-time counter
+ *  would hand them all the same id. */
+export const nextJobId = (jobs: WorkingJob[]): number =>
+  jobs.length > 0 ? Math.max(...jobs.map((j) => j.id)) + 1 : 1;
 
 export const migrateJobParts = (parts: unknown): WorkingPart[] => {
   if (Array.isArray(parts)) {
@@ -102,8 +109,11 @@ export function useQuote({
   const [discount, setDiscount] = useState<DiscountState>(EMPTY_DISCOUNT);
   const [ssOverride, setSsOverride] = useState<SsOverride>({ enabled: false, value: "" });
   const [sublets, setSublets] = useState<WorkingSublet[]>([]);
-  const [fillModal, setFillModal] = useState<{ template: JobTemplate } | null>(null);
-  const jobCounter = jobs.length > 0 ? Math.max(...jobs.map((j) => j.id)) : 0;
+  // Templates waiting on part selection. A queue, not a single slot, so mass-adding
+  // recommendations prompts for each one in turn instead of clobbering the modal.
+  const [fillQueue, setFillQueue] = useState<JobTemplate[]>([]);
+  const fillModal = fillQueue.length > 0 ? { template: fillQueue[0] } : null;
+  const dismissFillModal = () => setFillQueue((q) => q.slice(1));
   // ── Totals ───────────────────────────────────────────────────────────────
 
   const subletTotalsInput = useMemo(
@@ -142,8 +152,7 @@ export function useQuote({
   // ── Job handlers ─────────────────────────────────────────────────────────
 
   const handleAddJob = () => {
-    const newId = jobCounter + 1;
-    setJobs((prev) => [...prev, EMPTY_JOB(newId)]);
+    setJobs((prev) => [...prev, EMPTY_JOB(nextJobId(prev))]);
   };
 
   const handleUpdateJob = (id: number, field: string, value: unknown) => {
@@ -223,20 +232,23 @@ export function useQuote({
     setDiscount(EMPTY_DISCOUNT);
     setSsOverride({ enabled: false, value: "" });
     setSublets([]);
+    setFillQueue([]);
     onRatesChange(await loadGlobalRates());
     onNavigateToCompose();
   };
 
-  const handleSaveQuote = async () => {
+  /** Returns the saved quote's id, or null when validation stopped the save. */
+  const handleSaveQuote = async (): Promise<string | null> => {
     if (!customerData.name.trim()) {
       toast("Please enter a customer name before saving.", "error");
-      return;
+      return null;
     }
     const savedNumber = await saveQuote(buildQuoteData());
     setCurrentQuoteId(String(savedNumber));
     setQuoteNumber(savedNumber);
     await refreshHistory();
     toast(`Quote #${savedNumber} saved successfully!`);
+    return String(savedNumber);
   };
 
   const handleUpdateQuote = async () => {
@@ -328,11 +340,10 @@ export function useQuote({
   };
 
   const applyTemplateWithParts = (template: JobTemplate, resolvedParts: WorkingPart[]) => {
-    const newId = jobCounter + 1;
     setJobs((prev) => [
       ...prev,
       {
-        id: newId,
+        id: nextJobId(prev),
         name: template.name,
         parts: resolvedParts.map((p) => ({
           partNumber: p.partNumber || "",
@@ -353,7 +364,7 @@ export function useQuote({
   const handleApplyTemplate = async (template: JobTemplate) => {
     const hasSlots = (template.parts || []).some((p) => p.type === "category");
     if (hasSlots) {
-      setFillModal({ template });
+      setFillQueue((q) => [...q, template]);
       onApplyTemplateWithSlots();
       return;
     }
@@ -388,7 +399,7 @@ export function useQuote({
     discount, setDiscount,
     ssOverride, setSsOverride,
     sublets, setSublets,
-    fillModal, setFillModal,
+    fillModal, dismissFillModal, setFillQueue,
     // Computed
     totals,
     // Handlers

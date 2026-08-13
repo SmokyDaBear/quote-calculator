@@ -1,40 +1,18 @@
 import { useState, useEffect } from "react";
-import {
-  getVendors,
-  saveVendor,
-  updateVendor,
-  deleteVendor,
-} from "../storage";
+import { getVendors, deleteVendor } from "../storage";
 import { formatPhone } from "../utils/formatPhone";
-import PhonesEditor from "./PhonesEditor";
-import type { Vendor, PhoneEntry } from "../types/index";
+import { requestPurchaseOrder } from "../utils/poRequest";
+import {
+  EMPTY_VENDOR_FORM,
+  VendorFormFields,
+  persistVendorForm,
+  vendorToForm,
+} from "./VendorForm";
+import type { VendorFormData } from "./VendorForm";
+import type { Vendor } from "../types/index";
 import { CSVLoader } from "./CSVLoader";
 
 const PAGE_SIZE = 10;
-
-type VendorFormData = {
-  name: string;
-  phones: PhoneEntry[];
-  address: string;
-  contact: string;
-  notes: string;
-};
-
-const EMPTY_FORM: VendorFormData = {
-  name: "",
-  phones: [{ label: "Phone", number: "" }],
-  address: "",
-  contact: "",
-  notes: "",
-};
-
-// Normalize phones from stored vendor: handles legacy single-string phone field
-function normalizePhones(vendor: Vendor): PhoneEntry[] {
-  if (vendor.phones && vendor.phones.length > 0) {
-    return vendor.phones;
-  }
-  return [{ label: "Phone", number: "" }];
-}
 
 type View = "list" | "new" | { editing: Vendor };
 
@@ -47,55 +25,9 @@ function VendorForm({ form, onChange, onSave, onCancel, isEditing }: {
   onCancel: () => void;
   isEditing: boolean;
 }) {
-  const set = <K extends keyof VendorFormData>(f: K, v: VendorFormData[K]) =>
-    onChange({ ...form, [f]: v });
-
   return (
     <div className="page-form page-card">
-      <div className="lib-form-group">
-        <label>Vendor Name *</label>
-        <input
-          type="text"
-          placeholder="e.g. NAPA Auto Parts"
-          value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-        />
-      </div>
-
-      <div className="lib-form-row two-col">
-        <PhonesEditor
-          phones={form.phones}
-          onChange={(phones) => set("phones", phones)}
-        />
-        <div className="lib-form-group">
-          <label>Contact Person</label>
-          <input
-            type="text"
-            placeholder="Sales rep name"
-            value={form.contact}
-            onChange={(e) => set("contact", e.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="lib-form-group">
-        <label>Address</label>
-        <textarea
-          className="lib-textarea"
-          placeholder="Street, City, State ZIP"
-          value={form.address}
-          onChange={(e) => set("address", e.target.value)}
-        />
-      </div>
-      <div className="lib-form-group">
-        <label>Notes</label>
-        <textarea
-          className="lib-textarea"
-          placeholder="Account numbers, terms, etc."
-          value={form.notes}
-          onChange={(e) => set("notes", e.target.value)}
-        />
-      </div>
+      <VendorFormFields form={form} onChange={onChange} />
       <div className="lib-form-actions">
         <button type="button" className="btn-small btn-secondary" onClick={onCancel}>
           Cancel
@@ -110,48 +42,38 @@ function VendorForm({ form, onChange, onSave, onCancel, isEditing }: {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => void }) {
+function VendorsPage({ onToast, onChanged }: {
+  onToast?: (msg: string, type?: string) => void;
+  /** Fires whenever the vendor list changes, so open editors can pick it up. */
+  onChanged?: () => void;
+}) {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [view, setView] = useState<View>("list");
-  const [form, setForm] = useState<VendorFormData>(EMPTY_FORM);
+  const [form, setForm] = useState<VendorFormData>(EMPTY_VENDOR_FORM);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
-  const refresh = () => getVendors().then(setVendors);
+  const refresh = async () => {
+    setVendors(await getVendors());
+    onChanged?.();
+  };
   useEffect(() => { refresh(); }, []);
 
-  const openNew = () => { setForm(EMPTY_FORM); setView("new"); };
+  const openNew = () => { setForm(EMPTY_VENDOR_FORM); setView("new"); };
 
   const openEdit = (v: Vendor) => {
-    setForm({
-      name: v.name,
-      phones: normalizePhones(v),
-      address: v.address || "",
-      contact: v.contact || "",
-      notes: v.notes || "",
-    });
+    setForm(vendorToForm(v));
     setView({ editing: v });
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) return;
-    const phones = form.phones
-      .filter((p) => p.number.trim())
-      .map((p) => ({ label: p.label.trim() || "Phone", number: p.number.trim() }));
-    const data = {
-      name: form.name.trim(),
-      phones,
-      address: form.address.trim(),
-      contact: form.contact.trim(),
-      notes: form.notes.trim(),
-    };
-    if (typeof view === "object" && "editing" in view) {
-      await updateVendor(view.editing.id, data);
-      onToast?.(`"${data.name}" updated.`, "info");
-    } else {
-      await saveVendor(data);
-      onToast?.(`"${data.name}" saved.`);
-    }
+    const editing = typeof view === "object" && "editing" in view ? view.editing : null;
+    const saved = await persistVendorForm(form, editing);
+    if (!saved) return;
+    onToast?.(
+      editing ? `"${saved.name}" updated.` : `"${saved.name}" saved.`,
+      editing ? "info" : undefined,
+    );
     await refresh();
     setView("list");
   };
@@ -239,6 +161,14 @@ function VendorsPage({ onToast }: { onToast?: (msg: string, type?: string) => vo
                       )}
                     </div>
                     <div className="page-item-actions">
+                      <button
+                        type="button"
+                        className="btn-small btn-success"
+                        title={`Start a purchase order for ${v.name}`}
+                        onClick={() => requestPurchaseOrder({ vendorId: v.id })}
+                      >
+                        + PO
+                      </button>
                       <button
                         type="button"
                         className="btn-small btn-secondary"

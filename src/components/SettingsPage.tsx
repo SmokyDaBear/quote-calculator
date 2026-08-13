@@ -13,7 +13,14 @@ import { parseCSV } from "./CSVLoader";
 import { downloadBackup, restoreBackup } from "../utils/backupData";
 import WarrantyPoliciesEditor from "./WarrantyPoliciesEditor";
 import { formatPhoneInput } from "../utils/formatPhone";
-import { JobCategory, TemplatePart } from "../types";
+import {
+  DAY_NAMES,
+  DEFAULT_STORE_HOURS,
+  minutesToTimeInput,
+  normalizeStoreHours,
+  timeInputToMinutes,
+} from "../utils/storeHours";
+import { JobCategory, TemplatePart, StoreHours } from "../types";
 
 type TSettingsPageProps = {
   rates: typeof DEFAULT_RATES;
@@ -26,6 +33,7 @@ type TSettingsPageProps = {
     printMessage?: string;
     workOrderDisclaimer?: string;
     invoiceWarranty?: string;
+    storeHours?: StoreHours;
   };
   onBusinessChange: (info: TSettingsPageProps["businessInfo"]) => void;
   isDark: boolean;
@@ -198,6 +206,26 @@ function SettingsPage({
 
   const setBiz = (field: string, value: string) => {
     onBusinessChange({ ...businessInfo, [field]: value });
+    setBizSaved(false);
+  };
+
+  const storeHours = normalizeStoreHours(businessInfo.storeHours);
+
+  const setStoreDay = (index: number, patch: Partial<StoreHours[number]>) => {
+    onBusinessChange({
+      ...businessInfo,
+      storeHours: storeHours.map((d, i) => (i === index ? { ...d, ...patch } : d)),
+    });
+    setBizSaved(false);
+  };
+
+  /** Copy one day's window onto every other open day. */
+  const applyHoursToAllDays = (index: number) => {
+    const { open, close } = storeHours[index];
+    onBusinessChange({
+      ...businessInfo,
+      storeHours: storeHours.map((d) => ({ ...d, open, close })),
+    });
     setBizSaved(false);
   };
 
@@ -433,6 +461,84 @@ function SettingsPage({
             </div>
           </div>
           <div className="settings-actions settings-mt">
+            <button type="button" className="btn-small btn-success" onClick={handleBizSave}>
+              {bizSaved ? "Saved!" : "Save"}
+            </button>
+          </div>
+
+          <h3 className="settings-section-title settings-mt">Store Hours</h3>
+          <p className="settings-section-desc">
+            Appointments can only be booked while you're open, and promised-by
+            times are estimated by counting billed labor hours against this
+            schedule.
+          </p>
+          <div className="store-hours">
+            {storeHours.map((day, i) => (
+              <div
+                key={DAY_NAMES[i]}
+                className={`store-hours-row${day.closed ? " store-hours-row--closed" : ""}`}
+              >
+                <label className="store-hours-day">
+                  <input
+                    type="checkbox"
+                    checked={!day.closed}
+                    onChange={(e) => setStoreDay(i, { closed: !e.target.checked })}
+                  />
+                  <span>{DAY_NAMES[i]}</span>
+                </label>
+                {day.closed ? (
+                  <span className="store-hours-closed">Closed</span>
+                ) : (
+                  <div className="store-hours-times">
+                    <input
+                      type="time"
+                      aria-label={`${DAY_NAMES[i]} opening time`}
+                      value={minutesToTimeInput(day.open)}
+                      onChange={(e) =>
+                        setStoreDay(i, {
+                          open: timeInputToMinutes(e.target.value, day.open),
+                        })
+                      }
+                    />
+                    <span className="store-hours-sep">to</span>
+                    <input
+                      type="time"
+                      aria-label={`${DAY_NAMES[i]} closing time`}
+                      value={minutesToTimeInput(day.close)}
+                      onChange={(e) =>
+                        setStoreDay(i, {
+                          close: timeInputToMinutes(e.target.value, day.close),
+                        })
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="btn-small btn-secondary"
+                      title="Use these hours every day"
+                      onClick={() => applyHoursToAllDays(i)}
+                    >
+                      Apply to all
+                    </button>
+                  </div>
+                )}
+                {!day.closed && day.close <= day.open && (
+                  <span className="store-hours-warning">
+                    Closing time must be after opening.
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="settings-actions settings-mt">
+            <button
+              type="button"
+              className="btn-small btn-secondary"
+              onClick={() =>
+                onBusinessChange({ ...businessInfo, storeHours: DEFAULT_STORE_HOURS })
+              }
+            >
+              Reset to Default Hours
+            </button>
             <button type="button" className="btn-small btn-success" onClick={handleBizSave}>
               {bizSaved ? "Saved!" : "Save"}
             </button>

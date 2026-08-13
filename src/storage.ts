@@ -197,6 +197,8 @@ export interface Task {
   note: string;
   createdAt: number;
   completed: boolean;
+  customerId?: string;  // optional link → Customer.id
+  vehicleId?: string;   // optional link → Vehicle.id (belongs to customerId)
 }
 
 export async function getTasks(): Promise<Task[]> {
@@ -212,9 +214,24 @@ export async function addTask(taskData: Partial<Task>): Promise<Task> {
     note: taskData.note || '',
     createdAt: Date.now(),
     completed: false,
+    customerId: taskData.customerId || undefined,
+    vehicleId: taskData.vehicleId || undefined,
   };
   await dbPut('tasks', task);
   return task;
+}
+
+/** Update an existing task in place, preserving id, createdAt and completed. */
+export async function updateTask(id: string, data: Partial<Task>): Promise<void> {
+  const existing = await dbGet<Task>('tasks', id);
+  if (!existing) return;
+  await dbPut('tasks', {
+    ...existing,
+    ...data,
+    id: existing.id,
+    createdAt: existing.createdAt,
+    completed: existing.completed,
+  });
 }
 
 export async function toggleTask(id: string): Promise<void> {
@@ -821,6 +838,14 @@ export async function getAppointments(): Promise<Appointment[]> {
 
 export async function getCustomerAppointments(customerId: string): Promise<Appointment[]> {
   return dbGetAllByIndex<Appointment>('appointments', 'customerId', customerId);
+}
+
+/** The appointment a quote is already scheduled against, if there is one. */
+export async function getQuoteAppointment(quoteId: string): Promise<Appointment | null> {
+  const all = await dbGetAll<Appointment>('appointments');
+  const linked = all.filter((a) => a.quoteId === quoteId);
+  if (linked.length === 0) return null;
+  return linked.sort((a, b) => a.dropoffAt - b.dropoffAt)[0];
 }
 
 export async function saveAppointment(

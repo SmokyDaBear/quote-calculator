@@ -3,7 +3,10 @@ import { getJobTemplates } from "../storage";
 import type { JobTemplate } from "../types/index";
 import HorizontalScrollContainer from "./HorizontalScrollContainer";
 
-function QuickJobs({ jobs, onApplyTemplate }: {
+function QuickJobs({
+  jobs,
+  onApplyTemplate,
+}: {
   jobs: Array<{ name: string }>;
   onApplyTemplate: (template: JobTemplate) => void;
 }) {
@@ -11,7 +14,11 @@ function QuickJobs({ jobs, onApplyTemplate }: {
 
   useEffect(() => {
     getJobTemplates().then((all) =>
-      setTemplates(all.filter((t) => (t as unknown as { quickJob?: boolean }).quickJob === true)),
+      setTemplates(
+        all.filter(
+          (t) => (t as unknown as { quickJob?: boolean }).quickJob === true,
+        ),
+      ),
     );
   }, []);
 
@@ -30,7 +37,10 @@ function QuickJobs({ jobs, onApplyTemplate }: {
           {templates.length} template{templates.length !== 1 ? "s" : ""}
         </span>
       </div>
-      <HorizontalScrollContainer hideScrollbar={true} trackClassName="service-rec-scroll">
+      <HorizontalScrollContainer
+        hideScrollbar={false}
+        trackClassName="service-rec-scroll"
+      >
         {templates.map((t) => {
           const added = addedNames.has(t.name.trim().toLowerCase());
           return (
@@ -44,7 +54,8 @@ function QuickJobs({ jobs, onApplyTemplate }: {
               )}
               {(Number(t.laborCost) > 0 || t.parts.length > 0) && (
                 <div className="service-rec-miles">
-                  {Number(t.laborCost) > 0 && `$${Number(t.laborCost).toFixed(2)} labor`}
+                  {Number(t.laborCost) > 0 &&
+                    `$${Number(t.laborCost).toFixed(2)} labor`}
                   {Number(t.laborCost) > 0 && t.parts.length > 0 && " · "}
                   {t.parts.length > 0 &&
                     `${t.parts.length} part${t.parts.length !== 1 ? "s" : ""}`}

@@ -1,0 +1,30 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.pill::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.info    { color: #3182ce; background: rgba(49, 130, 206, 0.12); }
+.warning { color: #dd6b20; background: rgba(221, 107, 32, 0.12); }
+.success { color: #2e9e6b; background: rgba(46, 158, 107, 0.14); }
+.danger  { color: #e53e3e; background: rgba(229, 62, 62, 0.12); }
+.neutral { color: var(--color-text-muted); background: var(--color-surface-alt); }
+
+[data-theme="dark"] .info    { color: #63a9e8; background: rgba(99, 169, 232, 0.14); }
+[data-theme="dark"] .warning { color: #f0904a; background: rgba(240, 144, 74, 0.14); }
+[data-theme="dark"] .success { color: #3ab87e; background: rgba(58, 184, 126, 0.16); }
+[data-theme="dark"] .danger  { color: #f07575; background: rgba(240, 117, 117, 0.14); }

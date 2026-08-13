@@ -2,3 +2,5 @@ dist
 .claude
 node_modules
 build
+local/*
+local

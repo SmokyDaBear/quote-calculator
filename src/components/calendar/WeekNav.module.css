@@ -1,0 +1,18 @@
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.nav svg {
+  width: 16px;
+  height: 16px;
+}
+
+.range {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--color-muted);
+  white-space: nowrap;
+}

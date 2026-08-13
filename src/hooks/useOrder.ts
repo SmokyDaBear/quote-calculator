@@ -29,7 +29,7 @@ import type { CustomerFormData } from "../components/CustomerFormFields";
 import type { SsOverride } from "../components/ShopSuppliesOverride";
 import type { VehicleFields } from "../components/VehicleSection";
 import type { DiscountState } from "./useQuote";
-import { EMPTY_DISCOUNT } from "./useQuote";
+import { EMPTY_DISCOUNT, nextJobId } from "./useQuote";
 import type {
   GlobalRates,
   BusinessInfo,
@@ -48,7 +48,7 @@ import type {
 } from "../types/index";
 
 const EMPTY_VEHICLE: VehicleFields = {
-  year: "", make: "", model: "", trim: "", vin: "", mileage: "",
+  year: "", make: "", model: "", trim: "", vin: "", mileage: "", notes: "",
 };
 
 const EMPTY_JOB = (id: number): WorkingJob => ({
@@ -125,8 +125,9 @@ export function useOrder({
   const [transportType, setTransportType] = useState<TransportType>(undefined);
   const [workStatus, setWorkStatus] = useState<OrderWorkStatus>("open");
   const [quoteId] = useState<string | undefined>(initialDraft?.quoteId);
+  // Set when a template has category slots that need picking before it can apply.
+  const [fillModal, setFillModal] = useState<{ template: JobTemplate } | null>(null);
 
-  const jobCounter = jobs.length > 0 ? Math.max(...jobs.map((j) => j.id)) : 0;
   const finalized = !!order?.finalized;
   const readOnly = finalized || !!order?.voidedAt;
 
@@ -257,7 +258,7 @@ export function useOrder({
   }, [orderId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Job handlers (mirror useQuote) ─────────────────────────────────────────
-  const handleAddJob = () => setJobs((prev) => [...prev, EMPTY_JOB(jobCounter + 1)]);
+  const handleAddJob = () => setJobs((prev) => [...prev, EMPTY_JOB(nextJobId(prev))]);
 
   const handleUpdateJob = (id: number, field: string, value: unknown) => {
     setJobs((prev) =>
@@ -283,7 +284,28 @@ export function useOrder({
 
   const handleRemoveJob = (id: number) => setJobs((prev) => prev.filter((j) => j.id !== id));
 
+  const applyTemplateWithParts = (template: JobTemplate, resolved: WorkingPart[]) => {
+    setJobs((prev) => [
+      ...prev,
+      {
+        id: nextJobId(prev),
+        name: template.name,
+        parts: resolved,
+        laborHrs: template.laborHrs ? String(template.laborHrs) : "",
+        laborCost: template.laborCost ? String(template.laborCost) : "",
+        description: template.description || "",
+        priceAtList: false,
+      },
+    ]);
+  };
+
   const handleApplyTemplate = async (template: JobTemplate) => {
+    // Slots need a part chosen for each one; the modal resolves the whole
+    // template (specific parts included) and hands back the finished list.
+    if ((template.parts || []).some((p) => p.type === "category")) {
+      setFillModal({ template });
+      return;
+    }
     const library = await getPartsLibrary();
     const resolved: WorkingPart[] = (template.parts || [])
       .filter((p): p is TemplatePart_Specific => p.type === "specific" && !!p.partId)
@@ -298,18 +320,7 @@ export function useOrder({
           msrp: found?.msrp?.toString(),
         };
       });
-    setJobs((prev) => [
-      ...prev,
-      {
-        id: jobCounter + 1,
-        name: template.name,
-        parts: resolved,
-        laborHrs: template.laborHrs ? String(template.laborHrs) : "",
-        laborCost: template.laborCost ? String(template.laborCost) : "",
-        description: template.description || "",
-        priceAtList: false,
-      },
-    ]);
+    applyTemplateWithParts(template, resolved);
   };
 
   const handleSaveAsTemplate = () => {
@@ -566,7 +577,8 @@ export function useOrder({
     totals,
     // handlers
     handleAddJob, handleUpdateJob, handleRemoveJob,
-    handleApplyTemplate, handleSaveAsTemplate,
+    handleApplyTemplate, applyTemplateWithParts, handleSaveAsTemplate,
+    fillModal, setFillModal,
     handleAddSublet, handleUpdateSublet, handleRemoveSublet, handleCreatePoForSublet,
     handleSaveOrder, handleRecordPayment, handleInvoiceOrder, handleVoidOrder,
     businessInfo,

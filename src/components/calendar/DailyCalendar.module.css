@@ -1,0 +1,198 @@
+/* Horizontal scroll container — advisor columns can exceed the viewport. */
+.scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: var(--dc-time-w, 68px) repeat(var(--dc-cols), minmax(var(--dc-col-w, 200px), 1fr));
+  min-width: min-content;
+}
+
+/* Shared cell chrome — hairline separators between every cell. */
+.cell {
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-xs);
+}
+.cell:last-child {
+  border-right: none;
+}
+
+/* ── Sticky header row (advisor names) ─────────────────────────────────── */
+.colHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  background: var(--color-surface-alt);
+  font-weight: 600;
+  color: var(--color-text);
+}
+.colTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.colCount {
+  flex-shrink: 0;
+  min-width: 1.5rem;
+  padding: 0 var(--space-xs);
+  text-align: center;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border-radius: var(--radius-full);
+}
+
+/* ── Sticky time gutter (left) ─────────────────────────────────────────── */
+.timeCell {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-sm) var(--space-sm) 0 var(--space-xs);
+  background: var(--color-surface-alt);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Top-left corner — sticks in both axes, so it must sit above both. */
+.corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+}
+.cornerIcon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── Event slot cell ───────────────────────────────────────────────────── */
+.slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-height: 56px;
+}
+
+/* ── Event block ───────────────────────────────────────────────────────── */
+.event {
+  --dc-stripe: var(--color-border-strong);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-sm);
+  padding-left: calc(var(--space-sm) + 3px);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--dc-stripe);
+  border-radius: var(--radius-sm);
+  transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+.event[role='button'] {
+  cursor: pointer;
+}
+.event[role='button']:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--color-border-strong);
+}
+.event[role='button']:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.event[data-tone='info'] { --dc-stripe: var(--color-info); }
+.event[data-tone='success'] { --dc-stripe: var(--color-success); }
+.event[data-tone='warning'] { --dc-stripe: var(--color-warning); }
+.event[data-tone='danger'] { --dc-stripe: var(--color-danger); }
+.event[data-tone='neutral'] { --dc-stripe: var(--color-border-strong); }
+
+.eventHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+.eventTime {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+.eventName {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  line-height: 1.3;
+}
+.eventMeta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: 1.3;
+}
+
+/* ── Per-event actions ─────────────────────────────────────────────────── */
+.eventActions {
+  display: flex;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 26px;
+  min-width: 26px;
+  padding: 0 var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+.actionBtn:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+  background: var(--color-accent-ring);
+}
+.actionBtn svg {
+  width: 14px;
+  height: 14px;
+}
+.actionDanger:hover {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+  background: transparent;
+}
+
+/* ── Empty state ───────────────────────────────────────────────────────── */
+.empty {
+  padding: var(--space-2xl) var(--space-md);
+  text-align: center;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import validateVin from "../utils/validateVin";
 import {
   getCustomerVehicles,
@@ -80,10 +80,7 @@ function RecallSection({ recalls }: { recalls: RecallState }) {
       {Array.isArray(recalls) && recalls.length > 0 && (
         <div className="vin-recall-list">
           {recalls.map((r) => (
-            <details
-              key={r.NHTSACampaignNumber}
-              className="vin-recall-item"
-            >
+            <details key={r.NHTSACampaignNumber} className="vin-recall-item">
               <summary className="vin-recall-summary">
                 <span className="vin-recall-num">#{r.NHTSACampaignNumber}</span>
                 {(r.parkIt || r.parkOutSide) && (
@@ -136,6 +133,8 @@ export type VehicleFields = {
   trim: string;
   vin: string;
   mileage: string;
+  /** Free-form notes carried on the saved vehicle record. */
+  notes?: string;
 };
 
 function DecodeDialog({
@@ -155,11 +154,7 @@ function DecodeDialog({
       <div className="modal vin-dialog">
         <div className="library-modal-header">
           <h3>VIN — {result.vin}</h3>
-          <button
-            type="button"
-            className="btn-remove"
-            onClick={onClose}
-          >
+          <button type="button" className="btn-remove" onClick={onClose}>
             ×
           </button>
         </div>
@@ -348,85 +343,83 @@ export function VehicleFormFields({
   const makeDisabled = !vehicle.year;
   const modelDisabled = !vehicle.year || !vehicle.make;
 
-  const makeField =
-    makes ?
-      <select
-        aria-label="Make"
-        value={vehicle.make}
-        disabled={makeDisabled}
-        onChange={(e) => {
-          setRawModels(null);
-          onChange({ ...vehicle, make: e.target.value, model: "", trim: "" });
-        }}
-      >
-        <option value="">Select make…</option>
-        {vehicle.make && !makes.includes(vehicle.make) && (
-          <option value={vehicle.make}>{vehicle.make}</option>
-        )}
-        {makes.map((m) => (
-          <option
-            key={m}
-            value={m}
-          >
-            {m}
-          </option>
-        ))}
-      </select>
-    : <input
-        type="text"
-        disabled={makeDisabled}
-        placeholder={
-          !vehicle.year ? "Select year first"
-          : rawMakes === null ?
-            "Loading makes…"
-          : "e.g. Toyota"
-        }
-        value={vehicle.make}
-        onChange={(e) =>
-          onChange({ ...vehicle, make: e.target.value, model: "", trim: "" })
-        }
-      />;
+  const makeField = makes ? (
+    <select
+      aria-label="Make"
+      value={vehicle.make}
+      disabled={makeDisabled}
+      onChange={(e) => {
+        setRawModels(null);
+        onChange({ ...vehicle, make: e.target.value, model: "", trim: "" });
+      }}
+    >
+      <option value="">Select make…</option>
+      {vehicle.make && !makes.includes(vehicle.make) && (
+        <option value={vehicle.make}>{vehicle.make}</option>
+      )}
+      {makes.map((m) => (
+        <option key={m} value={m}>
+          {m}
+        </option>
+      ))}
+    </select>
+  ) : (
+    <input
+      type="text"
+      disabled={makeDisabled}
+      placeholder={
+        !vehicle.year
+          ? "Select year first"
+          : rawMakes === null
+            ? "Loading makes…"
+            : "e.g. Toyota"
+      }
+      value={vehicle.make}
+      onChange={(e) =>
+        onChange({ ...vehicle, make: e.target.value, model: "", trim: "" })
+      }
+    />
+  );
 
-  const modelField =
-    models ?
-      <select
-        aria-label="Model"
-        value={vehicle.model}
-        disabled={modelDisabled}
-        onChange={(e) => set("model", e.target.value)}
-      >
-        <option value="">Select model…</option>
-        {vehicle.model && !models.includes(vehicle.model) && (
-          <option value={vehicle.model}>{vehicle.model}</option>
-        )}
-        {models.map((m) => (
-          <option
-            key={m}
-            value={m}
-          >
-            {m}
-          </option>
-        ))}
-      </select>
-    : <input
-        type="text"
-        disabled={modelDisabled}
-        placeholder={
-          !vehicle.year ? "Select year first"
-          : !vehicle.make ?
-            "Select make first"
-          : rawModels === null ?
-            "Loading models…"
-          : "e.g. Camry"
-        }
-        value={vehicle.model}
-        onChange={(e) => set("model", e.target.value)}
-      />;
+  const modelField = models ? (
+    <select
+      aria-label="Model"
+      value={vehicle.model}
+      disabled={modelDisabled}
+      onChange={(e) => set("model", e.target.value)}
+    >
+      <option value="">Select model…</option>
+      {vehicle.model && !models.includes(vehicle.model) && (
+        <option value={vehicle.model}>{vehicle.model}</option>
+      )}
+      {models.map((m) => (
+        <option key={m} value={m}>
+          {m}
+        </option>
+      ))}
+    </select>
+  ) : (
+    <input
+      type="text"
+      disabled={modelDisabled}
+      placeholder={
+        !vehicle.year
+          ? "Select year first"
+          : !vehicle.make
+            ? "Select make first"
+            : rawModels === null
+              ? "Loading models…"
+              : "e.g. Camry"
+      }
+      value={vehicle.model}
+      onChange={(e) => set("model", e.target.value)}
+    />
+  );
 
   return (
     <>
       <div className="vehicle-grid">
-        <div className="form-group vehicle-year">
+        <div className="lib-form-group vehicle-year">
           <label>Year</label>
           <select
             aria-label="Year"
@@ -444,24 +437,21 @@ export function VehicleFormFields({
           >
             <option value="">Year..</option>
             {YEARS.map((year) => (
-              <option
-                key={year}
-                value={year}
-              >
+              <option key={year} value={year}>
                 {year}
               </option>
             ))}
           </select>
         </div>
-        <div className="form-group">
+        <div className="lib-form-group">
           <label>Make</label>
           {makeField}
         </div>
-        <div className="form-group">
+        <div className="lib-form-group">
           <label>Model</label>
           {modelField}
         </div>
-        <div className="form-group">
+        <div className="lib-form-group">
           <label>Trim</label>
           <input
             type="text"
@@ -470,7 +460,7 @@ export function VehicleFormFields({
             onChange={(e) => set("trim", e.target.value)}
           />
         </div>
-        <div className="form-group">
+        <div className="lib-form-group">
           <label>Mileage</label>
           <input
             type="text"
@@ -480,7 +470,7 @@ export function VehicleFormFields({
           />
         </div>
       </div>
-      <div className="form-group vehicle-vin">
+      <div className="lib-form-group vehicle-vin">
         <label>VIN</label>
         <div className="vin-input-row">
           <input
@@ -541,10 +531,9 @@ export function VehicleFormFields({
             <span
               className={`vin-recalls-inline-badge${recalls.length > 0 ? " vin-recalls-badge--warn" : " vin-recalls-badge--ok"}`}
             >
-              {recalls.length === 0 ?
-                "No recalls"
-              : `${recalls.length} recall${recalls.length !== 1 ? "s" : ""} found`
-              }
+              {recalls.length === 0
+                ? "No recalls"
+                : `${recalls.length} recall${recalls.length !== 1 ? "s" : ""} found`}
             </span>
           )}
           {Array.isArray(recalls) && recalls.length > 0 && (
@@ -595,13 +584,19 @@ function VehiclePickerStrip({
 }) {
   const [saved, setSaved] = useState<Vehicle[]>([]);
   const [search, setSearch] = useState("");
+  const prevCustomerId = useRef(customerId);
 
   const refresh = () => getCustomerVehicles(customerId).then(setSaved);
 
   useEffect(() => {
     refresh();
-    onSelectId(null);
-    setSearch("");
+    // Only drop the selection when the customer actually changes — remounting
+    // this strip (e.g. re-entering edit mode) must not clear a valid pick.
+    if (prevCustomerId.current !== customerId) {
+      prevCustomerId.current = customerId;
+      onSelectId(null);
+      setSearch("");
+    }
   }, [customerId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelect = (v: Vehicle) => {
@@ -612,6 +607,7 @@ function VehiclePickerStrip({
       trim: v.trim,
       vin: v.vin,
       mileage: v.mileage,
+      notes: v.notes || "",
     });
     onSelectId(v.id);
     onDecodedVinData?.(v.decodedVinData);
@@ -637,7 +633,7 @@ function VehiclePickerStrip({
       const created = await saveCustomerVehicle(customerId, {
         ...vehicle,
         color: "",
-        notes: "",
+        notes: vehicle.notes || "",
         decodedVinData,
       });
       onSelectId(created.id);
@@ -646,9 +642,8 @@ function VehiclePickerStrip({
   };
 
   const q = search.trim().toLowerCase();
-  const visible =
-    q ?
-      saved.filter(
+  const visible = q
+    ? saved.filter(
         (v) =>
           vehicleLabel(v).toLowerCase().includes(q) ||
           (v.vin || "").toLowerCase().includes(q),
@@ -668,11 +663,12 @@ function VehiclePickerStrip({
           {selectedId ? "Update Vehicle" : "Save Vehicle"}
         </button>
       </div>
-      {saved.length === 0 ?
+      {saved.length === 0 ? (
         <span className="vehicle-picker-empty">
           No vehicles saved — fill in the form below and click Save Vehicle.
         </span>
-      : <>
+      ) : (
+        <>
           {saved.length > 3 && (
             <input
               type="text"
@@ -724,7 +720,7 @@ function VehiclePickerStrip({
             )}
           </div>
         </>
-      }
+      )}
     </div>
   );
 }
@@ -738,6 +734,7 @@ const EMPTY_VEHICLE_FIELDS: VehicleFields = {
   trim: "",
   vin: "",
   mileage: "",
+  notes: "",
 };
 
 function VehicleSection({
@@ -773,6 +770,11 @@ function VehicleSection({
 
   const [isEditing, setIsEditing] = useState(!hasData);
 
+  // A vehicle record belongs to a customer — drop the link when there isn't one.
+  useEffect(() => {
+    if (!customerId && selectedId) updateSelectedId(null);
+  }, [customerId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sync edit mode when vehicle is cleared externally
   useEffect(() => {
     if (
@@ -784,6 +786,7 @@ function VehicleSection({
       !vehicle.mileage
     ) {
       setIsEditing(true);
+      if (selectedId) updateSelectedId(null);
     }
   }, [
     vehicle.year,
@@ -817,7 +820,7 @@ function VehicleSection({
         <h3 className="section-heading">Vehicle Information</h3>
       </div>
 
-      {showForm ?
+      {showForm ? (
         <>
           {customerId && (
             <VehiclePickerStrip
@@ -841,17 +844,40 @@ function VehicleSection({
             decodedVinData={decodedVinData}
             onDecodedData={setDecodedVinData}
           />
+          <div className="lib-form-group">
+            <label htmlFor="vehicle-notes">
+              Notes
+              {/* Notes live on the vehicle record, not the quote. */}
+              {customerId && (
+                <span className="lib-label-hint">
+                  saved when you {selectedId ? "update" : "save"} the vehicle
+                </span>
+              )}
+            </label>
+            <textarea
+              id="vehicle-notes"
+              className="lib-textarea"
+              placeholder="Internal notes about this vehicle…"
+              value={vehicle.notes ?? ""}
+              onChange={(e) =>
+                handleChange({ ...vehicle, notes: e.target.value })
+              }
+            />
+          </div>
           {hasData && (
-            <button
-              type="button"
-              className="btn-small btn-secondary info-done-btn"
-              onClick={() => setIsEditing(false)}
-            >
-              Done
-            </button>
+            <div className="info-form-actions">
+              <button
+                type="button"
+                className="btn-small btn-secondary info-done-btn"
+                onClick={() => setIsEditing(false)}
+              >
+                Done
+              </button>
+            </div>
           )}
         </>
-      : <div className="info-card">
+      ) : (
+        <div className="info-card">
           <div className="info-card-header">
             <strong className="info-card-name">{label || "Vehicle"}</strong>
             <div className="info-card-actions">
@@ -887,9 +913,16 @@ function VehicleSection({
                 </span>
               </div>
             )}
+            {vehicle.notes?.trim() && (
+              <div className="info-card-row">
+                <span className="info-card-text info-card-notes">
+                  {vehicle.notes}
+                </span>
+              </div>
+            )}
           </div>
         </div>
-      }
+      )}
     </div>
   );
 }

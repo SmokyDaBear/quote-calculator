@@ -194,7 +194,21 @@ export interface BusinessInfo {
   workOrderDisclaimer?: string;
   /** Warranty text printed above the signature line on invoices. */
   invoiceWarranty?: string;
+  /** Weekly operating hours, used to schedule and estimate promise times. */
+  storeHours?: StoreHours;
 }
+
+// ── Store Hours ──────────────────────────────────────────────────────────────
+
+/** One weekday's operating window, in minutes past midnight. */
+export interface StoreDayHours {
+  closed: boolean;
+  open: number;
+  close: number;
+}
+
+/** Seven entries indexed by `Date.getDay()` — index 0 is Sunday. */
+export type StoreHours = StoreDayHours[];
 
 // ── Warranty Policies ────────────────────────────────────────────────────────
 

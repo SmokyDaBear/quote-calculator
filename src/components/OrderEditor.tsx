@@ -8,6 +8,7 @@ import DiscountSection from "./DiscountSection";
 import ShopSuppliesOverride from "./ShopSuppliesOverride";
 import { ToggleField } from "./forms/ToggleField";
 import PaymentModal from "./PaymentModal";
+import TemplateFillModal from "./TemplateFillModal";
 import type { PaymentInput } from "./PaymentModal";
 import { useOrder } from "../hooks/useOrder";
 import type { OrderDraft } from "../hooks/useOrder";
@@ -378,6 +379,17 @@ function OrderEditor({
           defaultAmount={o.balanceDue > 0 ? o.balanceDue : 0}
           onSubmit={handlePaymentSubmit}
           onClose={() => setPayOpen(false)}
+        />
+      )}
+
+      {o.fillModal && (
+        <TemplateFillModal
+          template={o.fillModal.template}
+          onConfirm={(resolvedParts) => {
+            o.applyTemplateWithParts(o.fillModal!.template, resolvedParts);
+            o.setFillModal(null);
+          }}
+          onCancel={() => o.setFillModal(null)}
         />
       )}
     </div>

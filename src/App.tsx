@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Modal from "./components/Modal";
 import QuoteInfo from "./components/QuoteInfo";
 import QuoteHistoryPanel from "./components/QuoteHistoryPanel";
@@ -43,6 +43,9 @@ import {
   PrintIcon,
   SaveIcon,
   NewQuoteIcon,
+  EditIcon,
+  OrderIcon,
+  PiggyBank,
 } from "./icons";
 import {
   DEFAULT_RATES,
@@ -64,6 +67,7 @@ import {
   updateCustomer,
   getCustomer,
   getCustomerVehicles,
+  getQuoteAppointment,
   getQuote,
   getVendors,
 } from "./storage";
@@ -102,9 +106,9 @@ const BIZ_DEFAULTS: BusinessInfo = {
 
 const NAV_TABS = [
   { id: "quote", label: "Quotes", icon: <IconQuote /> },
-  { id: "orders", label: "Orders", icon: <IconQuote /> },
+  { id: "orders", label: "Orders", icon: <OrderIcon /> },
   { id: "appointments", label: "Appointments", icon: <IconCustomers /> },
-  { id: "purchasing", label: "Purchasing", icon: <IconVendors /> },
+  { id: "purchasing", label: "Purchasing", icon: <PiggyBank /> },
   { id: "templates", label: "Job Templates", icon: <IconTemplates /> },
   { id: "inventory", label: "Inventory", icon: <IconInventory /> },
   { id: "customers", label: "Customers", icon: <IconCustomers /> },
@@ -127,15 +131,15 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   );
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem(THEME_KEY);
-    return saved ?
-        saved === "dark"
+    return saved
+      ? saved === "dark"
       : window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
   const [accent, setAccent] = useState(
     () => localStorage.getItem(ACCENT_KEY) ?? "green",
   );
-  const [customTheme, setCustomTheme] = useState<CustomTheme | null>(
-    () => loadCustomTheme(),
+  const [customTheme, setCustomTheme] = useState<CustomTheme | null>(() =>
+    loadCustomTheme(),
   );
   const [showWelcome, setShowWelcome] = useState(
     () => localStorage.getItem(WELCOME_KEY) !== WELCOME_VERSION,
@@ -152,7 +156,12 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     orderId: string | null;
     draft: OrderDraft | null;
   } | null>(null);
-  const [apptModal, setApptModal] = useState<{ draft: OrderDraft | null } | null>(null);
+  const [apptModal, setApptModal] = useState<{
+    draft: OrderDraft | null;
+    appointment?: Appointment | null;
+    /** Billed hours behind the promise-time estimate. */
+    laborHours?: number;
+  } | null>(null);
   const bumpOrders = () => setOrdersReloadKey((k) => k + 1);
 
   // ── Purchasing ──────────────────────────────────────────────────────────────
@@ -189,7 +198,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     setSsOverride,
     sublets,
     fillModal,
-    setFillModal,
+    dismissFillModal,
     totals,
     handleNewQuote,
     handleSaveQuote,
@@ -220,6 +229,26 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     onApplyTemplateWithSlots: () => setActiveView("quote"),
   });
 
+  /** Saved vehicle record backing the quote's vehicle, when one is picked/saved. */
+  const [quoteVehicleId, setQuoteVehicleId] = useState<string | null>(null);
+
+  /** Appointment the loaded quote is already scheduled against, if any. */
+  const [quoteAppointment, setQuoteAppointment] = useState<Appointment | null>(
+    null,
+  );
+
+  const refreshQuoteAppointment = useCallback(async () => {
+    if (!currentQuoteId) {
+      setQuoteAppointment(null);
+      return;
+    }
+    setQuoteAppointment(await getQuoteAppointment(currentQuoteId));
+  }, [currentQuoteId]);
+
+  useEffect(() => {
+    refreshQuoteAppointment();
+  }, [refreshQuoteAppointment, ordersReloadKey]);
+
   // ── Initial load ───────────────────────────────────────────────────────────
   useEffect(() => {
     Promise.all([
@@ -242,9 +271,13 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep the vendor list fresh for sublets / purchase orders.
-  useEffect(() => {
+  const refreshVendors = useCallback(() => {
     getVendors().then(setVendors);
-  }, [ordersReloadKey]);
+  }, []);
+
+  useEffect(() => {
+    refreshVendors();
+  }, [ordersReloadKey, refreshVendors]);
 
   // Let any "Create Purchase Order" button (parts, sublets) open the PO editor.
   useEffect(() => {
@@ -349,7 +382,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     customerId,
     selectedCustomer,
     vehicle,
-    vehicleId: null,
+    vehicleId: quoteVehicleId,
     jobs,
     discount,
     ssOverride,
@@ -367,8 +400,57 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     setActiveView("orders");
   };
 
-  const handleCreateAppointment = () => {
-    setApptModal({ draft: buildQuoteDraft() });
+  /** Schedule a new appointment for this quote, or reschedule the one it has. */
+  const handleAppointmentAction = async () => {
+    // The appointment links back by quote id, and that's what "Edit Services"
+    // reopens later — so an unsaved quote has to be saved first.
+    let quoteId = currentQuoteId;
+    if (!quoteId) {
+      quoteId = await handleSaveQuote();
+      if (!quoteId) return;
+    }
+    setApptModal({
+      draft: { ...buildQuoteDraft(), quoteId },
+      appointment: quoteAppointment,
+      laborHours: totals.laborHours,
+    });
+  };
+
+  /**
+   * Billed hours for an appointment opened without the quote loaded — read back
+   * off the saved quote so the promise estimate still has something to work with.
+   */
+  const laborHoursForAppointment = async (
+    appt: Appointment,
+  ): Promise<number> => {
+    if (!appt.quoteId) return 0;
+    const quote = (await getQuote(appt.quoteId)) as {
+      jobs?: WorkingJob[];
+    } | null;
+    return (quote?.jobs ?? []).reduce(
+      (sum, j) => sum + (Number(j.laborHrs) || 0),
+      0,
+    );
+  };
+
+  /** Reschedule straight from the appointments list, without the quote screen. */
+  const handleRescheduleAppointment = async (appt: Appointment) => {
+    setApptModal({
+      draft: null,
+      appointment: appt,
+      laborHours: await laborHoursForAppointment(appt),
+    });
+  };
+
+  /** Pencil/Edit on the appointments list: reopen the quote it came from. */
+  const handleEditAppointment = async (appt: Appointment) => {
+    // Nothing to reopen (or the quote was deleted) — edit the appointment itself.
+    if (!appt.quoteId || !(await getQuote(appt.quoteId))) {
+      await handleRescheduleAppointment(appt);
+      return;
+    }
+    await handleLoadQuote(appt.quoteId);
+    setActiveView("quote");
   };
 
   const handleSaveQuoteCustomer = async () => {
@@ -437,7 +519,9 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
       customerData: cust
         ? {
             name: cust.name,
-            phones: cust.phones.length ? cust.phones : [{ label: "Mobile", number: "" }],
+            phones: cust.phones.length
+              ? cust.phones
+              : [{ label: "Mobile", number: "" }],
             email: cust.email,
             address: cust.address,
             notes: cust.notes,
@@ -449,10 +533,15 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
       selectedCustomer: cust,
       vehicle: veh
         ? {
-            year: veh.year, make: veh.make, model: veh.model,
-            trim: veh.trim, vin: veh.vin, mileage: veh.mileage,
+            year: veh.year,
+            make: veh.make,
+            model: veh.model,
+            trim: veh.trim,
+            vin: veh.vin,
+            mileage: veh.mileage,
+            notes: veh.notes || "",
           }
-        : { year: "", make: "", model: "", trim: "", vin: "", mileage: "" },
+        : { year: "", make: "", model: "", trim: "", vin: "", mileage: "", notes: "" },
       vehicleId: appt.vehicleId,
       jobs: draftJobs,
       discount: dDiscount,
@@ -473,7 +562,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
     <div className="app-root">
       <div className={`app-header-wrap${navOpen ? " nav-open" : ""}`}>
         <header>
-          {businessInfo.name || businessInfo.logo ?
+          {businessInfo.name || businessInfo.logo ? (
             <div className="header-brand">
               {businessInfo.logo && (
                 <img
@@ -486,7 +575,9 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                 <span className="header-biz-name">{businessInfo.name}</span>
               )}
             </div>
-          : <h1>Quote Calculator</h1>}
+          ) : (
+            <h1>Quote Calculator</h1>
+          )}
           <button
             className="nav-hamburger"
             aria-label="Toggle navigation"
@@ -512,7 +603,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                 }}
               >
                 {tab.icon}
-                {tab.label}
+                <span className="main-nav-tab-label">{tab.label}</span>
               </button>
             ))}
           </div>
@@ -558,7 +649,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                 </button>
               </div>
 
-              {quoteTab === "history" ?
+              {quoteTab === "history" ? (
                 <QuoteHistoryPanel
                   history={history}
                   searchTerm={searchTerm}
@@ -568,7 +659,8 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                   page={historyPage}
                   onPageChange={setHistoryPage}
                 />
-              : <div className="quote-compose-layout">
+              ) : (
+                <div className="quote-compose-layout">
                   {/* ── Main column ── */}
                   <div className="quote-compose-main">
                     <div className="quote-info-vehicle-row">
@@ -589,6 +681,7 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                         vehicle={vehicle}
                         onChange={setVehicle}
                         customerId={customerId}
+                        onVehicleIdChange={setQuoteVehicleId}
                       />
                     </div>
                     <QuickJobs
@@ -632,17 +725,14 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                           onChange={setIsTaxable}
                           label="Taxable"
                           badge={
-                            !isTaxable && customerData.taxId ?
-                              `Exempt ID: ${customerData.taxId}`
-                            : undefined
+                            !isTaxable && customerData.taxId
+                              ? `Exempt ID: ${customerData.taxId}`
+                              : undefined
                           }
                         />
                       </div>
                     </div>
-                    <NotesSection
-                      notes={notes}
-                      onChange={setNotes}
-                    />
+                    <NotesSection notes={notes} onChange={setNotes} />
                   </div>
 
                   {/* ── Sticky aside ── */}
@@ -676,9 +766,15 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                       <button
                         type="button"
                         className="btn btn-secondary"
-                        onClick={handleCreateAppointment}
+                        onClick={handleAppointmentAction}
                       >
-                        Create Appointment
+                        {quoteAppointment ? (
+                          <>
+                            <EditIcon /> Update Appointment
+                          </>
+                        ) : (
+                          "Create Appointment"
+                        )}
                       </button>
                       {currentQuoteId && (
                         <button
@@ -697,15 +793,15 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                         }
                       >
                         <SaveIcon />
-                        {currentQuoteId ?
-                          `Update #${currentQuoteId}`
-                        : "Save Quote"}
+                        {currentQuoteId
+                          ? `Update #${currentQuoteId}`
+                          : "Save Quote"}
                       </button>
                     </div>
                     <ResultsSection totals={totals} />
                   </div>
                 </div>
-              }
+              )}
             </div>
           )}
           {activeView === "orders" &&
@@ -727,14 +823,21 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
             ) : (
               <OrdersPage
                 reloadKey={ordersReloadKey}
-                onNewOrder={() => setOrderEditorState({ orderId: null, draft: null })}
-                onOpenOrder={(id) => setOrderEditorState({ orderId: id, draft: null })}
+                onNewOrder={() =>
+                  setOrderEditorState({ orderId: null, draft: null })
+                }
+                onOpenOrder={(id) =>
+                  setOrderEditorState({ orderId: id, draft: null })
+                }
               />
             ))}
           {activeView === "appointments" && (
             <AppointmentsPage
               reloadKey={ordersReloadKey}
+              storeHours={businessInfo.storeHours}
               onNewAppointment={() => setApptModal({ draft: null })}
+              onEditAppointment={handleEditAppointment}
+              onRescheduleAppointment={handleRescheduleAppointment}
               onConvertToOrder={handleConvertAppointmentToOrder}
               onChanged={bumpOrders}
             />
@@ -752,7 +855,10 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
                 toast={toast}
               />
             ) : showExpenses ? (
-              <ExpensesPage reloadKey={ordersReloadKey} onBack={() => setShowExpenses(false)} />
+              <ExpensesPage
+                reloadKey={ordersReloadKey}
+                onBack={() => setShowExpenses(false)}
+              />
             ) : (
               <PurchaseOrdersPage
                 reloadKey={ordersReloadKey}
@@ -776,7 +882,9 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
           )}
           {activeView === "customers" && <CustomersPage onToast={toast} />}
           {activeView === "vehicles" && <VehiclesPage onToast={toast} />}
-          {activeView === "vendors" && <VendorsPage onToast={toast} />}
+          {activeView === "vendors" && (
+            <VendorsPage onToast={toast} onChanged={refreshVendors} />
+          )}
           {activeView === "tools" && <ToolsPage />}
           {activeView === "about" && <About />}
           {activeView === "settings" && (
@@ -819,29 +927,32 @@ function App({ legacyMigrated = false }: { legacyMigrated?: boolean }) {
       {fillModal && (
         <TemplateFillModal
           template={fillModal.template}
+          // Keyed so the next queued template remounts with fresh selections.
+          key={fillModal.template.id}
           onConfirm={(resolvedParts: WorkingPart[]) => {
             applyTemplateWithParts(fillModal.template, resolvedParts);
-            setFillModal(null);
+            dismissFillModal();
           }}
-          onCancel={() => setFillModal(null)}
+          onCancel={dismissFillModal}
         />
       )}
       {apptModal && (
         <AppointmentModal
           draft={apptModal.draft}
+          appointment={apptModal.appointment}
+          laborHours={apptModal.laborHours ?? 0}
+          storeHours={businessInfo.storeHours}
           onClose={() => setApptModal(null)}
           onSaved={() => {
             setApptModal(null);
             bumpOrders();
+            refreshQuoteAppointment();
             setActiveView("appointments");
           }}
           toast={toast}
         />
       )}
-      <ToastContainer
-        toasts={toasts}
-        onDismiss={dismiss}
-      />
+      <ToastContainer toasts={toasts} onDismiss={dismiss} />
       {showWelcome && <WelcomeModal onDismiss={dismissWelcome} />}
     </div>
   );
