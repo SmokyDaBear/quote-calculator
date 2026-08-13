@@ -21,6 +21,8 @@ import {
   timeInputToMinutes,
 } from "../utils/storeHours";
 import { JobCategory, TemplatePart, StoreHours } from "../types";
+import { extractZip, getTaxRates, ZipCheckResponse } from "../utils/taxRates";
+import styles from "./TaxModule.module.css";
 
 type TSettingsPageProps = {
   rates: typeof DEFAULT_RATES;
@@ -51,10 +53,10 @@ type SettingsTab = "appearance" | "business" | "rates" | "policies" | "data";
 
 const SETTINGS_TABS: { id: SettingsTab; label: string }[] = [
   { id: "appearance", label: "Appearance" },
-  { id: "business",   label: "Business" },
-  { id: "rates",      label: "Rates" },
-  { id: "policies",   label: "Warranty" },
-  { id: "data",       label: "Data" },
+  { id: "business", label: "Business" },
+  { id: "rates", label: "Rates" },
+  { id: "policies", label: "Warranty" },
+  { id: "data", label: "Data" },
 ];
 
 function SettingsPage({
@@ -86,6 +88,11 @@ function SettingsPage({
   const [restoring, setRestoring] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const restoreInputRef = useRef<HTMLInputElement>(null);
+  const [taxData, setTaxData] = useState<ZipCheckResponse | null>(null);
+  const [taxError, setTaxError] = useState<string | null>(null);
+  const [taxLoading, setTaxLoading] = useState(false);
+  // Seeded from the business address, but editable — the shop's tax ZIP may differ.
+  const [taxZip, setTaxZip] = useState(() => extractZip(businessInfo.address));
 
   // ── Backup / Restore ────────────────────────────────────────────────────────
 
@@ -115,7 +122,12 @@ function SettingsPage({
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    if (!window.confirm("Restoring a backup will overwrite all current data. Continue?")) return;
+    if (
+      !window.confirm(
+        "Restoring a backup will overwrite all current data. Continue?",
+      )
+    )
+      return;
     setRestoring(true);
     try {
       const counts = await restoreBackup(file);
@@ -124,7 +136,10 @@ function SettingsPage({
       );
       setTimeout(() => window.location.reload(), 1200);
     } catch {
-      onToast?.("Restore failed. Make sure the file is a valid backup .zip.", "error");
+      onToast?.(
+        "Restore failed. Make sure the file is a valid backup .zip.",
+        "error",
+      );
     } finally {
       setRestoring(false);
     }
@@ -149,17 +164,28 @@ function SettingsPage({
 
   // ── Markup matrix ────────────────────────────────────────────────────────────
 
-  const sortedMatrix = [...(rates.partsMarkupMatrix || DEFAULT_MARKUP_MATRIX)].sort((a, b) => {
+  const sortedMatrix = [
+    ...(rates.partsMarkupMatrix || DEFAULT_MARKUP_MATRIX),
+  ].sort((a, b) => {
     if (a.max === null) return 1;
     if (b.max === null) return -1;
     return a.max - b.max;
   });
 
-  const updateMatrixRow = (displayIdx: number, field: string, rawValue: string) => {
-    const value = field === "max"
-      ? rawValue === "" ? null : Number(rawValue)
-      : Number(rawValue) || 0;
-    const updated = sortedMatrix.map((row, i) => i === displayIdx ? { ...row, [field]: value } : row);
+  const updateMatrixRow = (
+    displayIdx: number,
+    field: string,
+    rawValue: string,
+  ) => {
+    const value =
+      field === "max"
+        ? rawValue === ""
+          ? null
+          : Number(rawValue)
+        : Number(rawValue) || 0;
+    const updated = sortedMatrix.map((row, i) =>
+      i === displayIdx ? { ...row, [field]: value } : row,
+    );
     onRatesChange({ ...rates, partsMarkupMatrix: updated });
   };
 
@@ -168,19 +194,25 @@ function SettingsPage({
     const prevMax = finite.length > 0 ? finite[finite.length - 1].max : 0;
     const newRow = { max: (prevMax || 0) + 100, markupPct: 30 };
     const last = sortedMatrix.find((r) => r.max === null);
-    onRatesChange({ ...rates, partsMarkupMatrix: [...finite, newRow, ...(last ? [last] : [])] });
+    onRatesChange({
+      ...rates,
+      partsMarkupMatrix: [...finite, newRow, ...(last ? [last] : [])],
+    });
   };
 
   const removeMatrixRow = (displayIdx: number) => {
     if (sortedMatrix.length <= 1) return;
     let updated = sortedMatrix.filter((_, i) => i !== displayIdx);
     if (!updated.some((r) => r.max === null)) {
-      updated = updated.map((r, i) => i === updated.length - 1 ? { ...r, max: null } : r);
+      updated = updated.map((r, i) =>
+        i === updated.length - 1 ? { ...r, max: null } : r,
+      );
     }
     onRatesChange({ ...rates, partsMarkupMatrix: updated });
   };
 
-  const resetMatrix = () => onRatesChange({ ...rates, partsMarkupMatrix: DEFAULT_MARKUP_MATRIX });
+  const resetMatrix = () =>
+    onRatesChange({ ...rates, partsMarkupMatrix: DEFAULT_MARKUP_MATRIX });
 
   const handleRepriceInventory = async () => {
     setRepriceLoading(true);
@@ -214,7 +246,9 @@ function SettingsPage({
   const setStoreDay = (index: number, patch: Partial<StoreHours[number]>) => {
     onBusinessChange({
       ...businessInfo,
-      storeHours: storeHours.map((d, i) => (i === index ? { ...d, ...patch } : d)),
+      storeHours: storeHours.map((d, i) =>
+        i === index ? { ...d, ...patch } : d,
+      ),
     });
     setBizSaved(false);
   };
@@ -255,22 +289,35 @@ function SettingsPage({
       const res = await fetch(`${import.meta.env.BASE_URL}templates.csv`);
       if (!res.ok) throw new Error("fetch failed");
       const { rows } = parseCSV(await res.text());
-      const valid = rows.filter((r: Record<string, string>) => r["name"]?.trim());
-      await Promise.all(valid.map((row: Record<string, string>) => {
-        let parts: TemplatePart[] = [];
-        if (row["parts"]) { try { const p = JSON.parse(row["parts"]); if (Array.isArray(p)) parts = p; } catch { /* ignore */ } }
-        return saveJobTemplate({
-          name: row["name"].trim(),
-          description: row["description"] || "",
-          laborHrs: Number(row["laborHrs"]) || 0,
-          laborCost: Number(row["laborCost"]) || 0,
-          parts,
-          mileageInterval: Number(row["mileageInterval"]) || 0,
-          quickJob: row["quickJob"] === "true",
-          jobCategory: (row["jobCategory"] as JobCategory) || undefined,
-        });
-      }));
-      onToast?.(`Loaded ${valid.length} default template${valid.length !== 1 ? "s" : ""}.`);
+      const valid = rows.filter((r: Record<string, string>) =>
+        r["name"]?.trim(),
+      );
+      await Promise.all(
+        valid.map((row: Record<string, string>) => {
+          let parts: TemplatePart[] = [];
+          if (row["parts"]) {
+            try {
+              const p = JSON.parse(row["parts"]);
+              if (Array.isArray(p)) parts = p;
+            } catch {
+              /* ignore */
+            }
+          }
+          return saveJobTemplate({
+            name: row["name"].trim(),
+            description: row["description"] || "",
+            laborHrs: Number(row["laborHrs"]) || 0,
+            laborCost: Number(row["laborCost"]) || 0,
+            parts,
+            mileageInterval: Number(row["mileageInterval"]) || 0,
+            quickJob: row["quickJob"] === "true",
+            jobCategory: (row["jobCategory"] as JobCategory) || undefined,
+          });
+        }),
+      );
+      onToast?.(
+        `Loaded ${valid.length} default template${valid.length !== 1 ? "s" : ""}.`,
+      );
     } catch {
       onToast?.("Failed to load default templates.", "error");
     } finally {
@@ -284,22 +331,65 @@ function SettingsPage({
       const res = await fetch(`${import.meta.env.BASE_URL}inventory.csv`);
       if (!res.ok) throw new Error("fetch failed");
       const { rows } = parseCSV(await res.text());
-      const valid = rows.filter((r: Record<string, string>) => r["name"]?.trim());
-      await Promise.all(valid.map((row: Record<string, string>) => saveLibraryPart({
-        name: row["name"].trim(),
-        partNumber: row["partNumber"] || "",
-        cost: Number(row["cost"]) || 0,
-        price: Number(row["price"]) || 0,
-        msrp: Number(row["msrp"]) || 0,
-        category: row["category"] || "",
-        subcategory: row["subcategory"] || "",
-        description: row["description"] || "",
-      })));
-      onToast?.(`Loaded ${valid.length} default part${valid.length !== 1 ? "s" : ""}.`);
+      const valid = rows.filter((r: Record<string, string>) =>
+        r["name"]?.trim(),
+      );
+      await Promise.all(
+        valid.map((row: Record<string, string>) =>
+          saveLibraryPart({
+            name: row["name"].trim(),
+            partNumber: row["partNumber"] || "",
+            cost: Number(row["cost"]) || 0,
+            price: Number(row["price"]) || 0,
+            msrp: Number(row["msrp"]) || 0,
+            category: row["category"] || "",
+            subcategory: row["subcategory"] || "",
+            description: row["description"] || "",
+          }),
+        ),
+      );
+      onToast?.(
+        `Loaded ${valid.length} default part${valid.length !== 1 ? "s" : ""}.`,
+      );
     } catch {
       onToast?.("Failed to load default inventory.", "error");
     } finally {
       setInventoryLoading(false);
+    }
+  };
+
+  const getTaxRateByZipCode = async (zip: string) => {
+    const trimmedZip = zip.trim();
+
+    if (!trimmedZip) {
+      setTaxData(null);
+      setTaxError("Enter a ZIP code to look up sales tax.");
+      return;
+    }
+
+    setTaxLoading(true);
+    setTaxError(null);
+
+    try {
+      const data = await getTaxRates(trimmedZip);
+      setTaxData(data);
+      // Applied to the form only — the user still has to Save.
+      onRatesChange({ ...rates, taxRate: Number(data.combined_rate_pct) });
+      setRatesSaved(false);
+      onToast?.(
+        `Tax rate set to ${data.combined_rate_pct}% for ${trimmedZip}. Save to keep it.`,
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Unable to look up tax rates right now.";
+
+      setTaxData(null);
+      setTaxError(message);
+      onToast?.(message, "error");
+    } finally {
+      setTaxLoading(false);
     }
   };
 
@@ -335,7 +425,9 @@ function SettingsPage({
               onClick={onToggleTheme}
               aria-label="Dark mode"
               tabIndex={0}
-              onKeyDown={(e) => e.key === "Enter" || e.key === " " ? onToggleTheme() : undefined}
+              onKeyDown={(e) =>
+                e.key === "Enter" || e.key === " " ? onToggleTheme() : undefined
+              }
             />
           </div>
           <div className="settings-appearance-row settings-mt">
@@ -347,8 +439,13 @@ function SettingsPage({
                 type="button"
                 key={preset.id}
                 className={`accent-swatch${accent === preset.id ? " active" : ""}`}
-                style={{ "--swatch-color": preset.swatch } as React.CSSProperties}
-                onClick={() => { onAccentChange(preset.id); setShowCustomEditor(false); }}
+                style={
+                  { "--swatch-color": preset.swatch } as React.CSSProperties
+                }
+                onClick={() => {
+                  onAccentChange(preset.id);
+                  setShowCustomEditor(false);
+                }}
                 title={preset.name}
                 aria-label={preset.name}
               />
@@ -357,8 +454,15 @@ function SettingsPage({
               <button
                 type="button"
                 className={`accent-swatch${accent === "custom" ? " active" : ""}`}
-                style={{ "--swatch-color": customTheme.swatch } as React.CSSProperties}
-                onClick={() => { onAccentChange("custom"); setShowCustomEditor(false); }}
+                style={
+                  {
+                    "--swatch-color": customTheme.swatch,
+                  } as React.CSSProperties
+                }
+                onClick={() => {
+                  onAccentChange("custom");
+                  setShowCustomEditor(false);
+                }}
                 title="Custom Theme"
                 aria-label="Custom Theme"
               />
@@ -368,7 +472,9 @@ function SettingsPage({
               className="accent-swatch-edit-btn"
               onClick={() => setShowCustomEditor((v) => !v)}
               title={customTheme ? "Edit custom theme" : "Create custom theme"}
-              aria-label={customTheme ? "Edit custom theme" : "Create custom theme"}
+              aria-label={
+                customTheme ? "Edit custom theme" : "Create custom theme"
+              }
             >
               {showCustomEditor ? "×" : customTheme ? "✎" : "+"}
             </button>
@@ -391,20 +497,36 @@ function SettingsPage({
       {activeTab === "business" && (
         <div className="page-card settings-section">
           <h3 className="settings-section-title">Business Information</h3>
-          <p className="settings-section-desc">Appears in the header of printed quotes.</p>
+          <p className="settings-section-desc">
+            Appears in the header of printed quotes.
+          </p>
           <div className="biz-form">
             <div className="biz-logo-row">
               <div className="biz-logo-preview">
-                {businessInfo.logo
-                  ? <img src={businessInfo.logo} alt="Logo" className="biz-logo-img" />
-                  : <span className="biz-logo-placeholder">No logo</span>}
+                {businessInfo.logo ? (
+                  <img
+                    src={businessInfo.logo}
+                    alt="Logo"
+                    className="biz-logo-img"
+                  />
+                ) : (
+                  <span className="biz-logo-placeholder">No logo</span>
+                )}
               </div>
               <div className="biz-logo-actions">
-                <button type="button" className="btn-small btn-secondary" onClick={() => logoInputRef.current?.click()}>
+                <button
+                  type="button"
+                  className="btn-small btn-secondary"
+                  onClick={() => logoInputRef.current?.click()}
+                >
                   {businessInfo.logo ? "Change Logo" : "Upload Logo"}
                 </button>
                 {businessInfo.logo && (
-                  <button type="button" className="btn-small btn-danger-sm" onClick={() => setBiz("logo", "")}>
+                  <button
+                    type="button"
+                    className="btn-small btn-danger-sm"
+                    onClick={() => setBiz("logo", "")}
+                  >
                     Remove
                   </button>
                 )}
@@ -420,22 +542,42 @@ function SettingsPage({
             </div>
             <div className="lib-form-group">
               <label>Business Name</label>
-              <input type="text" placeholder="Your Shop Name" value={businessInfo.name} onChange={(e) => setBiz("name", e.target.value)} />
+              <input
+                type="text"
+                placeholder="Your Shop Name"
+                value={businessInfo.name}
+                onChange={(e) => setBiz("name", e.target.value)}
+              />
             </div>
             <div className="lib-form-group">
               <label>Phone</label>
-              <input type="tel" placeholder="Business phone" value={businessInfo.phone} onChange={(e) => setBiz("phone", formatPhoneInput(e.target.value))} />
+              <input
+                type="tel"
+                placeholder="Business phone"
+                value={businessInfo.phone}
+                onChange={(e) =>
+                  setBiz("phone", formatPhoneInput(e.target.value))
+                }
+              />
             </div>
             <div className="lib-form-group">
               <label>Address</label>
-              <textarea className="lib-textarea" placeholder="Street, City, State ZIP" value={businessInfo.address} onChange={(e) => setBiz("address", e.target.value)} />
+              <textarea
+                className="lib-textarea"
+                placeholder="Street, City, State ZIP"
+                value={businessInfo.address}
+                onChange={(e) => setBiz("address", e.target.value)}
+              />
             </div>
             <div className="lib-form-group">
               <label>Print Message</label>
               <textarea
                 className="lib-textarea"
                 placeholder={`e.g. "Thank you for choosing ${businessInfo.name || "our shop"}!"`}
-                value={businessInfo?.printMessage || `Thank you for choosing ${businessInfo.name || "our shop"}! We appreciate your business.`}
+                value={
+                  businessInfo?.printMessage ||
+                  `Thank you for choosing ${businessInfo.name || "our shop"}! We appreciate your business.`
+                }
                 onChange={(e) => setBiz("printMessage", e.target.value)}
               />
             </div>
@@ -461,7 +603,11 @@ function SettingsPage({
             </div>
           </div>
           <div className="settings-actions settings-mt">
-            <button type="button" className="btn-small btn-success" onClick={handleBizSave}>
+            <button
+              type="button"
+              className="btn-small btn-success"
+              onClick={handleBizSave}
+            >
               {bizSaved ? "Saved!" : "Save"}
             </button>
           </div>
@@ -482,7 +628,9 @@ function SettingsPage({
                   <input
                     type="checkbox"
                     checked={!day.closed}
-                    onChange={(e) => setStoreDay(i, { closed: !e.target.checked })}
+                    onChange={(e) =>
+                      setStoreDay(i, { closed: !e.target.checked })
+                    }
                   />
                   <span>{DAY_NAMES[i]}</span>
                 </label>
@@ -534,12 +682,19 @@ function SettingsPage({
               type="button"
               className="btn-small btn-secondary"
               onClick={() =>
-                onBusinessChange({ ...businessInfo, storeHours: DEFAULT_STORE_HOURS })
+                onBusinessChange({
+                  ...businessInfo,
+                  storeHours: DEFAULT_STORE_HOURS,
+                })
               }
             >
               Reset to Default Hours
             </button>
-            <button type="button" className="btn-small btn-success" onClick={handleBizSave}>
+            <button
+              type="button"
+              className="btn-small btn-success"
+              onClick={handleBizSave}
+            >
               {bizSaved ? "Saved!" : "Save"}
             </button>
           </div>
@@ -552,36 +707,160 @@ function SettingsPage({
           <div className="page-card settings-section">
             <h3 className="settings-section-title">Global Rates</h3>
             <p className="settings-section-desc">
-              These defaults apply to all new quotes. Rates saved with a quote are preserved when you reload it.
+              These defaults apply to all new quotes. Rates saved with a quote
+              are preserved when you reload it.
             </p>
             <div className="settings-rates-grid">
               <div className="lib-form-group">
                 <label>Tax Rate (%)</label>
-                <input aria-label="Tax Rate Percentage" type="number" step="0.01" value={rates.taxRate} onChange={(e) => handleRateChange("taxRate", e.target.value)} />
+                <input
+                  aria-label="Tax Rate Percentage"
+                  type="number"
+                  step="0.01"
+                  value={rates.taxRate}
+                  onChange={(e) => handleRateChange("taxRate", e.target.value)}
+                />
               </div>
               <div className="lib-form-group">
                 <label>Labor Rate ($/hr)</label>
-                <input aria-label="Labor rate in dollars per hour" type="number" step="0.01" value={rates.laborRate} onChange={(e) => handleRateChange("laborRate", e.target.value)} />
+                <input
+                  aria-label="Labor rate in dollars per hour"
+                  type="number"
+                  step="0.01"
+                  value={rates.laborRate}
+                  onChange={(e) =>
+                    handleRateChange("laborRate", e.target.value)
+                  }
+                />
               </div>
               <div className="lib-form-group">
                 <label>Shop Supplies Rate (%)</label>
-                <input aria-label="Shop supplies percentage rate" type="number" step="0.01" value={rates.ssRate} onChange={(e) => handleRateChange("ssRate", e.target.value)} />
+                <input
+                  aria-label="Shop supplies percentage rate"
+                  type="number"
+                  step="0.01"
+                  value={rates.ssRate}
+                  onChange={(e) => handleRateChange("ssRate", e.target.value)}
+                />
               </div>
               <div className="lib-form-group">
                 <label>Shop Supplies Max ($)</label>
-                <input aria-label="Maximum shop supplies charge in dollars" type="number" step="0.01" value={rates.ssMax} onChange={(e) => handleRateChange("ssMax", e.target.value)} />
+                <input
+                  aria-label="Maximum shop supplies charge in dollars"
+                  type="number"
+                  step="0.01"
+                  value={rates.ssMax}
+                  onChange={(e) => handleRateChange("ssMax", e.target.value)}
+                />
               </div>
             </div>
             <div className="settings-actions">
-              <button type="button" className="btn-small btn-secondary" onClick={handleRatesReset}>Reset to Defaults</button>
-              <button type="button" className="btn-small btn-success" onClick={handleRatesSave}>{ratesSaved ? "Saved!" : "Save"}</button>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={handleRatesReset}
+              >
+                Reset to Defaults
+              </button>
+              <button
+                type="button"
+                className="btn-small btn-success"
+                onClick={handleRatesSave}
+              >
+                {ratesSaved ? "Saved!" : "Save"}
+              </button>
+            </div>
+            <div className={styles.taxSection}>
+              <div className="lib-form-group">
+                <label htmlFor="tax-zip">
+                  Sales Tax Lookup
+                  <span className="lib-label-hint">
+                    by ZIP, via Open Sales Tax
+                  </span>
+                </label>
+                <div className={styles.zipRow}>
+                  <input
+                    id="tax-zip"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="e.g. 37013 or 37013-1234"
+                    value={taxZip}
+                    onChange={(e) => setTaxZip(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn-small btn-secondary"
+                    disabled={taxLoading || !taxZip.trim()}
+                    onClick={() => getTaxRateByZipCode(taxZip)}
+                  >
+                    {taxLoading
+                      ? "Looking up…"
+                      : `Get tax rates for zip: ${taxZip.trim() || "—"}`}
+                  </button>
+                </div>
+              </div>
+
+              {taxError && (
+                <div className={styles.taxAlert} role="alert">
+                  {taxError}
+                </div>
+              )}
+
+              {taxData && (
+                <div className={styles.taxSummary}>
+                  <p className={styles.taxRate}>
+                    Estimated combined tax rate:{" "}
+                    <strong>{taxData.combined_rate_pct}%</strong>
+                  </p>
+                  {taxData.coverage_warning && (
+                    <p className={styles.taxNotice}>
+                      <strong>Coverage warning:</strong>{" "}
+                      {taxData.coverage_warning}
+                    </p>
+                  )}
+                  {taxData.disclaimer && (
+                    <p className={styles.taxNotice}>
+                      <strong>Disclaimer:</strong> {taxData.disclaimer}
+                    </p>
+                  )}
+                  {taxData.jurisdictions?.length > 0 && (
+                    <div className={styles.taxTableWrapper}>
+                      <table className={styles.taxTable}>
+                        <thead>
+                          <tr>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Rate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {taxData.jurisdictions.map((jurisdiction, index) => (
+                            <tr key={`${jurisdiction.name}-${index}`}>
+                              <td>{jurisdiction.name}</td>
+                              <td>{jurisdiction.type}</td>
+                              <td>
+                                {jurisdiction.rate_pct != null
+                                  ? `${jurisdiction.rate_pct}%`
+                                  : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           <div className="page-card settings-section settings-mt-card">
             <h3 className="settings-section-title">Parts Markup Matrix</h3>
             <p className="settings-section-desc">
-              Sell price is calculated bracket-by-bracket (like marginal tax): each slice of cost in a tier gets that tier's markup rate, and the results are summed.
+              Sell price is calculated bracket-by-bracket (like marginal tax):
+              each slice of cost in a tier gets that tier's markup rate, and the
+              results are summed.
             </p>
             <div className="markup-matrix-wrap">
               <table className="markup-matrix-table">
@@ -591,7 +870,9 @@ function SettingsPage({
                     <th>Up To ($)</th>
                     <th>Markup %</th>
                     <th>Gross Profit %</th>
-                    <th><span className="sr-only">Remove</span></th>
+                    <th>
+                      <span className="sr-only">Remove</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -599,21 +880,52 @@ function SettingsPage({
                     <tr key={idx}>
                       <td className="matrix-range">
                         {formatRangeMin(idx)}
-                        {row.max === null ? "+" : ` – $${Number(row.max).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                        {row.max === null
+                          ? "+"
+                          : ` – $${Number(row.max).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       </td>
                       <td data-label="Up To ($)">
-                        {row.max === null
-                          ? <span className="matrix-unlimited">∞</span>
-                          : <input aria-label="Maximum cost for this markup tier in dollars" type="number" className="matrix-input" step="1" min="0" value={row.max} onChange={(e) => updateMatrixRow(idx, "max", e.target.value)} />}
+                        {row.max === null ? (
+                          <span className="matrix-unlimited">∞</span>
+                        ) : (
+                          <input
+                            aria-label="Maximum cost for this markup tier in dollars"
+                            type="number"
+                            className="matrix-input"
+                            step="1"
+                            min="0"
+                            value={row.max}
+                            onChange={(e) =>
+                              updateMatrixRow(idx, "max", e.target.value)
+                            }
+                          />
+                        )}
                       </td>
                       <td data-label="Markup %">
-                        <input aria-label="Markup percentage for this tier" type="number" className="matrix-input" step="0.1" min="0" value={row.markupPct} onChange={(e) => updateMatrixRow(idx, "markupPct", e.target.value)} />
+                        <input
+                          aria-label="Markup percentage for this tier"
+                          type="number"
+                          className="matrix-input"
+                          step="0.1"
+                          min="0"
+                          value={row.markupPct}
+                          onChange={(e) =>
+                            updateMatrixRow(idx, "markupPct", e.target.value)
+                          }
+                        />
                       </td>
                       <td className="matrix-gp" data-label="GP %">
                         {grossProfitPct(row.markupPct).toFixed(1)}%
                       </td>
                       <td className="matrix-remove-cell">
-                        <button type="button" className="btn-remove" onClick={() => removeMatrixRow(idx)} disabled={sortedMatrix.length <= 1}>×</button>
+                        <button
+                          type="button"
+                          className="btn-remove"
+                          onClick={() => removeMatrixRow(idx)}
+                          disabled={sortedMatrix.length <= 1}
+                        >
+                          ×
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -621,14 +933,34 @@ function SettingsPage({
               </table>
             </div>
             <div className="settings-actions settings-mt-sm">
-              <button type="button" className="btn-small btn-secondary" onClick={addMatrixRow}>+ Add Bracket</button>
-              <button type="button" className="btn-small btn-secondary" onClick={resetMatrix}>Reset to Defaults</button>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={addMatrixRow}
+              >
+                + Add Bracket
+              </button>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={resetMatrix}
+              >
+                Reset to Defaults
+              </button>
             </div>
             <div className="settings-reprice-row">
-              <button type="button" className="btn-small btn-success" onClick={handleRepriceInventory} disabled={repriceLoading}>
+              <button
+                type="button"
+                className="btn-small btn-success"
+                onClick={handleRepriceInventory}
+                disabled={repriceLoading}
+              >
                 {repriceLoading ? "Repricing…" : "Apply to Inventory"}
               </button>
-              <span className="settings-reprice-hint">Recalculates sell prices for all non-menu-priced parts using the current matrix.</span>
+              <span className="settings-reprice-hint">
+                Recalculates sell prices for all non-menu-priced parts using the
+                current matrix.
+              </span>
             </div>
           </div>
         </>
@@ -639,7 +971,9 @@ function SettingsPage({
         <div className="page-card settings-section">
           <h3 className="settings-section-title">Warranty Policies</h3>
           <p className="settings-section-desc">
-            Define proration tiers for warranty calculations. Policies can match a part category so they are auto-selected when looking up a part in the Proration Calculator.
+            Define proration tiers for warranty calculations. Policies can match
+            a part category so they are auto-selected when looking up a part in
+            the Proration Calculator.
           </p>
           <WarrantyPoliciesEditor onToast={onToast} />
         </div>
@@ -651,13 +985,24 @@ function SettingsPage({
           <div className="page-card settings-section">
             <h3 className="settings-section-title">Default Data</h3>
             <p className="settings-section-desc">
-              Populate your account with pre-built starter data. Each button adds to your existing records without removing anything.
+              Populate your account with pre-built starter data. Each button
+              adds to your existing records without removing anything.
             </p>
             <div className="settings-actions">
-              <button type="button" className="btn-small btn-secondary" onClick={handleLoadDefaults} disabled={defaultsLoading}>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={handleLoadDefaults}
+                disabled={defaultsLoading}
+              >
                 {defaultsLoading ? "Loading…" : "Load Default Templates"}
               </button>
-              <button type="button" className="btn-small btn-secondary" onClick={handleLoadDefaultInventory} disabled={inventoryLoading}>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={handleLoadDefaultInventory}
+                disabled={inventoryLoading}
+              >
                 {inventoryLoading ? "Loading…" : "Load Default Inventory"}
               </button>
             </div>
@@ -666,25 +1011,60 @@ function SettingsPage({
           <div className="page-card settings-section settings-mt-card">
             <h3 className="settings-section-title">Backup & Restore</h3>
             <p className="settings-section-desc">
-              Download a full backup of all your data, or restore from a previous backup.
+              Download a full backup of all your data, or restore from a
+              previous backup.
             </p>
             <div className="settings-actions">
-              <button type="button" className="btn-small btn-secondary" onClick={handleBackup} disabled={backingUp}>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={handleBackup}
+                disabled={backingUp}
+              >
                 {backingUp ? "Backing up…" : "Download Backup (.zip)"}
               </button>
-              <button type="button" className="btn-small btn-secondary" onClick={() => restoreInputRef.current?.click()} disabled={restoring}>
+              <button
+                type="button"
+                className="btn-small btn-secondary"
+                onClick={() => restoreInputRef.current?.click()}
+                disabled={restoring}
+              >
                 {restoring ? "Restoring…" : "Restore Backup (.zip)"}
               </button>
-              <input ref={restoreInputRef} type="file" accept=".zip" aria-label="Select backup zip file to restore" className="hidden-file-input" onChange={handleRestoreFile} />
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept=".zip"
+                aria-label="Select backup zip file to restore"
+                className="hidden-file-input"
+                onChange={handleRestoreFile}
+              />
             </div>
           </div>
 
           <div className="page-card settings-section settings-danger-section settings-mt-card">
             <h3 className="settings-section-title">Danger Zone</h3>
-            <p className="settings-section-desc">Permanently delete saved quotes or wipe all data from this device.</p>
+            <p className="settings-section-desc">
+              Permanently delete saved quotes or wipe all data from this device.
+            </p>
             <div className="settings-actions">
-              <button type="button" className="btn-small btn-danger-sm" onClick={onClearHistory}>Clear Quote History</button>
-              <button type="button" className="btn-small btn-danger-sm" onClick={() => { setWipeExported(false); setShowWipeModal(true); }}>Delete All Data</button>
+              <button
+                type="button"
+                className="btn-small btn-danger-sm"
+                onClick={onClearHistory}
+              >
+                Clear Quote History
+              </button>
+              <button
+                type="button"
+                className="btn-small btn-danger-sm"
+                onClick={() => {
+                  setWipeExported(false);
+                  setShowWipeModal(true);
+                }}
+              >
+                Delete All Data
+              </button>
             </div>
           </div>
         </>
@@ -692,10 +1072,19 @@ function SettingsPage({
 
       {/* ── Wipe modal ── */}
       {showWipeModal && (
-        <div className="modal-overlay show" onClick={(e) => { if (e.target === e.currentTarget) setShowWipeModal(false); }}>
+        <div
+          className="modal-overlay show"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowWipeModal(false);
+          }}
+        >
           <div className="modal wipe-modal">
             <h3>Delete All Data?</h3>
-            <p>This will permanently erase all quotes, customers, inventory, templates, tasks, and settings from this device. This action cannot be undone.</p>
+            <p>
+              This will permanently erase all quotes, customers, inventory,
+              templates, tasks, and settings from this device. This action
+              cannot be undone.
+            </p>
             <div className="wipe-export-row">
               <button
                 type="button"
@@ -703,13 +1092,31 @@ function SettingsPage({
                 onClick={handleExportFirst}
                 disabled={wipeExporting}
               >
-                {wipeExporting ? "Exporting…" : wipeExported ? "✓ Data Exported" : "Export Data First"}
+                {wipeExporting
+                  ? "Exporting…"
+                  : wipeExported
+                    ? "✓ Data Exported"
+                    : "Export Data First"}
               </button>
-              <span className="wipe-export-hint">Downloads a full backup .zip before deleting.</span>
+              <span className="wipe-export-hint">
+                Downloads a full backup .zip before deleting.
+              </span>
             </div>
             <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={() => setShowWipeModal(false)}>Cancel</button>
-              <button type="button" className="btn-danger" onClick={onClearAllData}>Delete Everything</button>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowWipeModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={onClearAllData}
+              >
+                Delete Everything
+              </button>
             </div>
           </div>
         </div>

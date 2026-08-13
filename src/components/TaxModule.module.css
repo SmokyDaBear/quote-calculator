@@ -1,0 +1,115 @@
+.container { display: flex; flex-direction: column; gap: var(--space-lg); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  align-items: start;
+}
+
+.fullCol  { grid-column: 1 / -1; }
+
+.divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--space-xs) 0;
+}
+
+@media (max-width: 700px) {
+  .grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.actions { display: flex; justify-content: flex-end; gap: 6px;}
+
+.storeSelect { min-width: 220px; }
+
+.readOnlyBadge {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  flex-shrink: 0;
+}
+
+.taxSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.zipRow {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.zipRow input {
+  flex: 0 1 200px;
+  min-width: 0;
+}
+
+.zipRow button {
+  white-space: nowrap;
+}
+
+.taxAlert {
+  border: 1px solid #b91c1c;
+  background: #fef2f2;
+  color: #991b1b;
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+.taxSummary {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.taxRate {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+.taxNotice {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.taxTableWrapper {
+  overflow-x: auto;
+}
+
+.taxTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.taxTable th,
+.taxTable td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.taxTable th {
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
